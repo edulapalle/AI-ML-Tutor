@@ -1,2 +1,6 @@
 fastapi
 uvicorn
+pymilvus
+openai
+python-dotenv
+mmh3
