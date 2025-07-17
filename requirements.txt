@@ -1,6 +1,7 @@
 fastapi
 uvicorn
-pymilvus
 openai
 python-dotenv
 mmh3
+requests
+jinja2

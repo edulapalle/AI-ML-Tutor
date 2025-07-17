@@ -1,17 +1,15 @@
 import os
-import asyncio
 import mmh3
 import json
+import requests
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 import openai
-from pymilvus import MilvusClient, Collection, CollectionSchema, FieldSchema, DataType, utility
 from dotenv import load_dotenv
 
 
@@ -48,92 +46,18 @@ class AddDocumentRequest(BaseModel):
     text: str = Field(..., description="Document text to add")
     metadata: str = Field(default="", description="Optional metadata for the document")
 
-# Milvus client
-milvus_client = None
-
-def connect_to_milvus():
-    """Connect to Milvus database using MilvusClient."""
-    global milvus_client
-    try:
-        milvus_client = MilvusClient(
-            uri=MILVUS_URI,
-            token=MILVUS_TOKEN
-        )
-        print("Connected to Milvus successfully")
-        return True
-    except Exception as e:
-        print(f"Failed to connect to Milvus: {e}")
-        return False
-
-def setup_milvus_collection():
-    """Setup Milvus collection for storing embeddings."""
-    global milvus_client
-    if not milvus_client:
-        return
-        
-    try:
-        # Check if collection exists
-        collections = milvus_client.list_collections()
-        if COLLECTION_NAME in collections:
-            print(f"Collection {COLLECTION_NAME} already exists")
-            return
-        
-        # Create collection with schema
-        schema = {
-            "fields": [
-                {"name": "id", "dtype": "INT64", "is_primary": True},
-                {"name": "text", "dtype": "VARCHAR", "max_length": 65535},
-                {"name": "embedding", "dtype": "FLOAT_VECTOR", "dim": 3072},
-                {"name": "channel_name", "dtype": "VARCHAR", "max_length": 128},
-                {"name": "metadata", "dtype": "VARCHAR", "max_length": 65535},
-            ],
-            "description": "Chat embeddings collection"
-        }
-        
-        milvus_client.create_collection(
-            collection_name=COLLECTION_NAME,
-            schema=schema
-        )
-        
-        # Create index
-        milvus_client.create_index(
-            collection_name=COLLECTION_NAME,
-            field_name="embedding",
-            index_params={
-                "metric_type": "COSINE",
-                "index_type": "IVF_FLAT",
-                "params": {"nlist": 128}
-            }
-        )
-        
-        print(f"Collection {COLLECTION_NAME} created successfully")
-        
-    except Exception as e:
-        print(f"Failed to setup Milvus collection: {e}")
-
-# Application lifespan
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    print("Starting up...")
-    if connect_to_milvus():
-        setup_milvus_collection()
-    yield
-    # Shutdown
-    print("Shutting down...")
 
 # Create FastAPI app
 app = FastAPI(
     title="ChatGPT RAG API",
     version="1.0.0",
-    lifespan=lifespan
 )
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="../static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Templates
-templates = Jinja2Templates(directory="../templates")
+templates = Jinja2Templates(directory="templates")
 
 # Utility functions
 async def get_embedding(text: str) -> List[float]:
@@ -151,45 +75,54 @@ async def get_embedding(text: str) -> List[float]:
         return []
 
 async def search_similar_documents(query: str, limit: int = 5) -> List[Dict[str, Any]]:
-    """Search for similar documents in Milvus."""
-    global milvus_client
-    if not milvus_client:
-        return []
-        
+    """Search for similar documents using Zilliz dedicated API over HTTP."""        
     try:
         # Get query embedding
         query_embedding = await get_embedding(query)
+        print('embeeding', query_embedding)
         if not query_embedding:
             return []
 
+        # Prepare search request for Zilliz API
+        search_url = f"{MILVUS_URI}/v2/vectordb/entities/search"
+        headers = {
+            "Authorization": f"Bearer {MILVUS_TOKEN}",
+            "Content-Type": "application/json"
+        }
         
-        # Search in Milvus using MilvusClient
-        results = milvus_client.search(
-            collection_name=COLLECTION_NAME,
-            data=[query_embedding],
-            limit=limit,
-            filter=f"channel_name == 'Eczachly_'",
-            output_fields=["text", "metadata"]
-        )
+        search_data = {
+            "collectionName": COLLECTION_NAME,
+            "data": [query_embedding],
+            "limit": limit,
+            "outputFields": ["text", "metadata"]
+        }
+
+        response = requests.post(search_url, json=search_data, headers=headers)
+        if response.status_code != 200:
+            print(f"Zilliz API error: {response.status_code}")
+            return []
+        
+        result = response.json()
         
         sources = []
-        for hits in results:
-            for hit in hits:
+        if 'data' in result:
+            for hit in result['data']:
                 try:
                     # Parse metadata if it's a JSON string
-                    metadata = hit['entity']['metadata']
+                    metadata = hit.get('metadata', {})
                     if isinstance(metadata, str):
                         metadata = json.loads(metadata)
                     
                     sources.append({
-                        "text": hit['entity']['text'],
+                        "text": hit.get('text', ''),
                         "metadata": metadata
                     })
-                except:
+                except Exception as e:
+                    print(f"Error parsing metadata: {e}")
                     # Fallback if metadata parsing fails
                     sources.append({
-                        "text": hit['entity']['text'],
-                        "metadata": hit['entity']['metadata']
+                        "text": hit.get('text', ''),
+                        "metadata": hit.get('metadata', {})
                     })
         
         return sources
@@ -295,48 +228,57 @@ async def chat(request: ChatRequest):
 
 @app.post("/api/add-document")
 async def add_document(request: AddDocumentRequest):
-    """Add a document to the RAG system."""
-    global milvus_client
-    if not milvus_client:
-        raise HTTPException(status_code=500, detail="Milvus not connected")
-        
+    """Add a document to the RAG system using Zilliz dedicated API."""
     try:
         # Generate Murmur3 hash of the text as primary key
         text_hash = mmh3.hash(request.text)
         
-
         print(text_hash)
-        # Check if document already exists
-        existing_docs = milvus_client.query(
-            collection_name=COLLECTION_NAME,
-            filter=f"id == {text_hash}",
-            output_fields=["id"]
-        )
         
-        if existing_docs:
-            return {"message": "Document already exists", "id": text_hash}
+        # Check if document already exists using Zilliz API
+        query_url = f"{MILVUS_URI}/v2/vectordb/entities/search"
+        headers = {
+            "Authorization": f"Bearer {MILVUS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        query_data = {
+            "collectionName": COLLECTION_NAME,
+            "filter": f"primary_key == {text_hash}",
+            "outputFields": ["primary_key"]
+        }
+
+        response = requests.post(query_url, json=query_data, headers=headers)
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('data') and len(result['data']) > 0:
+                return {"message": "Document already exists", "id": text_hash}
         
         # Get embedding
         embedding = await get_embedding(request.text)
         if not embedding:
             raise HTTPException(status_code=500, detail="Failed to generate embedding")
         
-
         json_metadata = json.loads(request.metadata)
         print(json_metadata)
         print(text_hash)
 
-        # Insert into Milvus using MilvusClient
-        milvus_client.insert(
-            collection_name=COLLECTION_NAME,
-            data={
-                "primary_key": text_hash,
+        # Insert into Zilliz using HTTP API
+        insert_url = f"{MILVUS_URI}/v2/vectordb/entities/upsert"
+        insert_data = {
+            "collectionName": COLLECTION_NAME,
+            "data": {
+                "id": text_hash,
                 "channel_name": json_metadata['channel_name'],
-                "text": [request.text],
+                "text": request.text,
                 "vector": embedding,
-                "metadata": [request.metadata]
+                "metadata": request.metadata
             }
-        )
+        }
+
+        response = requests.post(insert_url, json=insert_data, headers=headers)
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail=f"Failed to insert document: {response.status_code}")
         
         return {"message": "Document added successfully", "id": text_hash}
         
@@ -347,8 +289,21 @@ async def add_document(request: AddDocumentRequest):
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    global milvus_client
-    return {"status": "healthy", "milvus_connected": milvus_client is not None}
+    try:
+        # Test Zilliz API connection
+        headers = {
+            "Authorization": f"Bearer {MILVUS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        # Simple health check using list collections endpoint
+        health_url = f"{MILVUS_URI}/v2/vectordb/collections/list"
+        response = requests.post(health_url, headers=headers)
+        zilliz_connected = response.status_code == 200
+        print(zilliz_connected)
+        return {"status": "healthy", "zilliz_connected": zilliz_connected}
+    except Exception as e:
+        return {"status": "unhealthy", "zilliz_connected": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

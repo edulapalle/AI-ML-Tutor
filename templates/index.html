@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT RAG Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-robot"></i> ChatGPT RAG Chat</h1>
+                <p>Powered by OpenAI GPT and Milvus Vector Database</p>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system-message">
+                        <div class="message-content">
+                            <i class="fas fa-info-circle"></i>
+                            Welcome! I'm your AI assistant powered by ChatGPT and enhanced with RAG (Retrieval-Augmented Generation). 
+                            I can help you with questions and provide context-aware responses using the knowledge base.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="input-wrapper">
+                        <textarea 
+                            id="messageInput" 
+                            placeholder="Type your message here..."
+                            rows="1"
+                            maxlength="1000"
+                        ></textarea>
+                        <button id="sendButton" class="send-button">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="input-actions">
+                        <button id="clearButton" class="action-button">
+                            <i class="fas fa-trash"></i> Clear Chat
+                        </button>
+                        <button id="addDocumentButton" class="action-button">
+                            <i class="fas fa-plus"></i> Add Document
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-cog"></i> Settings</h3>
+                    <div class="setting-item">
+                        <label for="openaiKey">OpenAI API Key:</label>
+                        <input type="password" id="openaiKey" placeholder="Enter your OpenAI API key">
+                        <button id="saveKeyButton" class="small-button">Save</button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-database"></i> RAG Sources</h3>
+                    <div id="sourcesList" class="sources-list">
+                        <p class="no-sources">No sources found for current query</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-chart-line"></i> Status</h3>
+                    <div class="status-item">
+                        <span class="status-label">API Status:</span>
+                        <span id="apiStatus" class="status-value">Checking...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Milvus:</span>
+                        <span id="milvusStatus" class="status-value">Checking...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Document Modal -->
+    <div id="documentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-alt"></i> Add Document to RAG</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="documentText">Document Text:</label>
+                    <textarea id="documentText" rows="8" placeholder="Enter the document content here..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="documentMetadata">Metadata (optional):</label>
+                    <input type="text" id="documentMetadata" placeholder="e.g., source, author, date">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelDocumentButton" class="button secondary">Cancel</button>
+                <button id="submitDocumentButton" class="button primary">
+                    <i class="fas fa-save"></i> Add Document
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='/js/chat.js') }}"></script>
+</body>
+</html> 
