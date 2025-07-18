@@ -314,7 +314,7 @@ async def chat_with_gpt(message: str, conversation_history: List[ChatMessage], s
                         time_str = ""
                     
                     # Include YouTube ID if available
-                    youtube_info = f" (ID: https://www.youtube.com/watch?v={youtube_id})&t={str(round(timestamp))}s)" if youtube_id else ""
+                    youtube_info = f" (ID: https://www.youtube.com/watch?v={youtube_id}&t={str(round(timestamp))}s)" if youtube_id else ""
                     context_parts.append(f"Source ({channel_name} - {video_title}{youtube_info} : {source['text']}")
                 except Exception as e :
                     print(e)
