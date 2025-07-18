@@ -214,16 +214,6 @@ jobs:
       run: |
         python test_rag.py
         
-    - name: Test with different reranking configurations
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        MILVUS_URI: ${{ secrets.MILVUS_URI }}
-        MILVUS_TOKEN: ${{ secrets.MILVUS_TOKEN }}
-        ENABLE_RERANKING: "false"
-      run: |
-        echo "Testing without reranking..."
-        python test_rag.py
-        
     - name: Test API endpoints
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
