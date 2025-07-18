@@ -291,7 +291,7 @@ async def chat_with_gpt(message: str, conversation_history: List[ChatMessage], s
         return "OpenAI API key not configured."
     try:
         # Prepare system message
-        system_message = "You are a helpful AI assistant. Provide accurate and helpful responses. If a youtube link in the source, provide that as well with the proper timestamped youtube url with this format: https://youtube.com/watch?v=<id>&t=<time>s"
+        system_message = "You are a helpful AI assistant. Provide accurate and helpful responses. Provide all YouTube Links in the sources in the response"
         if sources:
             # Enhanced context with channel information
             context_parts = []
