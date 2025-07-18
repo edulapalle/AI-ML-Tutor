@@ -22,6 +22,11 @@ MILVUS_URI = os.getenv("MILVUS_URI", "https://in03-4efcec782ae2f4c.serverless.gc
 MILVUS_TOKEN = os.getenv("MILVUS_TOKEN", "dca9ee30dd6accca68a63953d96a07cf3295cb68d1df55d93823135499762886d4ea0c5cb68b7307f72afce73a991ebc16447360")
 COLLECTION_NAME = "youtube_creator_videos"
 
+# Reranking configuration
+ENABLE_RERANKING = os.getenv("ENABLE_RERANKING", "true").lower() == "true"
+RERANKING_MODEL = os.getenv("RERANKING_MODEL", "o3")  # GPT model for prompt-based reranking
+INITIAL_SEARCH_MULTIPLIER = int(os.getenv("INITIAL_SEARCH_MULTIPLIER", "3"))  # How many more results to fetch initially
+
 # Initialize OpenAI client
 if OPENAI_API_KEY:
     openai.api_key = OPENAI_API_KEY
@@ -41,10 +46,16 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str = Field(..., description="AI response")
     sources: List[Dict[str, Any]] = Field(default=[], description="RAG sources")
+    reranking_info: Dict[str, Any] = Field(default={}, description="Reranking information")
 
 class AddDocumentRequest(BaseModel):
     text: str = Field(..., description="Document text to add")
     metadata: str = Field(default="", description="Optional metadata for the document")
+
+class RerankingConfig(BaseModel):
+    enabled: bool = Field(..., description="Whether reranking is enabled")
+    model: str = Field(..., description="Reranking model to use")
+    initial_search_multiplier: int = Field(..., description="Multiplier for initial search results")
 
 
 # Create FastAPI app
@@ -74,8 +85,139 @@ async def get_embedding(text: str) -> List[float]:
         print(f"Error getting embedding: {e}")
         return []
 
-async def search_similar_documents(query: str, limit: int = 5) -> List[Dict[str, Any]]:
-    """Search for similar documents using Zilliz dedicated API over HTTP."""        
+async def rerank_results(query: str, documents: List[Dict[str, Any]], top_k: int = 5) -> List[Dict[str, Any]]:
+    """Rerank search results using OpenAI's GPT model with prompt-based evaluation."""
+    if not client or not documents or not ENABLE_RERANKING:
+        return documents[:top_k]
+    
+    try:
+        print(f"Reranking {len(documents)} documents using prompt-based evaluation")
+        
+        # Prepare documents for reranking
+        doc_texts = []
+        for doc in documents:
+            text = doc.get('text', '')
+            metadata = doc.get('metadata', {})
+            # Create a formatted document string for reranking
+            if isinstance(metadata, str):
+                try:
+                    metadata = json.loads(metadata)
+                except:
+                    metadata = {}
+            
+            # Format document with metadata context for better semantic matching
+            channel_name = metadata.get('channel_name', 'Unknown')
+            video_title = metadata.get('video_title', 'Unknown Video')
+            doc_str = f"Channel: {channel_name}\nVideo: {video_title}\nContent: {text}"
+            doc_texts.append(doc_str)
+        
+        # Create evaluation prompt
+        evaluation_prompt = f"""
+You are an expert at evaluating the relevance of documents to a user query. 
+
+User Query: "{query}"
+
+Please evaluate each document below and assign a relevance score from 0.0 to 1.0, where:
+- 0.0 = Completely irrelevant
+- 0.5 = Somewhat relevant
+- 1.0 = Highly relevant
+
+Consider factors like:
+- Semantic similarity to the query
+- Whether the document directly addresses the query
+- Contextual relevance
+- Information completeness
+
+Documents to evaluate:
+
+"""
+        
+        # Add each document to the prompt with a number
+        for i, doc_text in enumerate(doc_texts, 1):
+            evaluation_prompt += f"\nDocument {i}:\n{doc_text}\n"
+        
+        evaluation_prompt += f"""
+
+Please respond with ONLY a JSON array of scores, one for each document, in order.
+Example format: [0.8, 0.3, 0.9, 0.1, 0.7]
+
+Scores:"""
+        
+        # Get relevance scores from GPT
+        try:
+            response = await client.chat.completions.create(
+                model=RERANKING_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a precise evaluator. Respond only with the JSON array of scores."},
+                    {"role": "user", "content": evaluation_prompt}
+                ],
+                max_tokens=200,
+                temperature=0.1  # Low temperature for consistent scoring
+            )
+            
+            # Parse the response to get scores
+            response_text = response.choices[0].message.content.strip()
+            
+            # Extract JSON array from response
+            import re
+            json_match = re.search(r'\[[0-9.,\s]+\]', response_text)
+            if json_match:
+                scores_text = json_match.group()
+                scores = [float(score.strip()) for score in scores_text.strip('[]').split(',')]
+            else:
+                # Fallback: try to parse the entire response as JSON
+                scores = json.loads(response_text)
+            
+            # Ensure we have the right number of scores
+            if len(scores) != len(documents):
+                print(f"Warning: Expected {len(documents)} scores, got {len(scores)}")
+                # Pad or truncate scores
+                if len(scores) < len(documents):
+                    scores.extend([0.0] * (len(documents) - len(scores)))
+                else:
+                    scores = scores[:len(documents)]
+            
+        except Exception as e:
+            print(f"Error getting GPT scores: {e}")
+            # Fallback to uniform scores
+            scores = [0.5] * len(documents)
+        
+        # Create list of (score, index) tuples and sort by score
+        scored_docs = [(scores[i], i) for i in range(len(documents))]
+        scored_docs.sort(key=lambda x: x[0], reverse=True)
+        
+        # Return reranked documents
+        reranked_docs = []
+        for score, idx in scored_docs[:top_k]:
+            doc = documents[idx]
+            # Add relevance score to metadata for debugging
+            if 'rerank_score' not in doc:
+                doc['rerank_score'] = score
+            reranked_docs.append(doc)
+        
+        print(f"Reranking completed. Top relevance scores: {[f'{s:.3f}' for s, _ in scored_docs[:3]]}")
+        return reranked_docs
+        
+    except Exception as e:
+        print(f"Error in reranking: {e}")
+        return documents[:top_k]
+
+async def get_embedding_with_model(text: str, model: str) -> List[float]:
+    """Get embedding for text using specified OpenAI model."""
+    if not client:
+        return []
+    try:
+        response = await client.embeddings.create(
+            model=model,
+            input=text
+        )
+        return response.data[0].embedding
+    except Exception as e:
+        print(f"Error getting embedding with {model}: {e}")
+        return []
+
+async def search_similar_documents(query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    """Search for similar documents using Zilliz dedicated API over HTTP with reranking."""        
     try:
         # Get query embedding
         query_embedding = await get_embedding(query)
@@ -90,10 +232,13 @@ async def search_similar_documents(query: str, limit: int = 5) -> List[Dict[str,
             "Content-Type": "application/json"
         }
         
+        # Search for more documents initially to allow reranking to select the best ones
+        initial_limit = min(limit * INITIAL_SEARCH_MULTIPLIER, 20)  # Get 3x more results for reranking
+        
         search_data = {
             "collectionName": COLLECTION_NAME,
             "data": [query_embedding],
-            "limit": limit,
+            "limit": initial_limit,
             "outputFields": ["text", "metadata"]
         }
 
@@ -103,7 +248,9 @@ async def search_similar_documents(query: str, limit: int = 5) -> List[Dict[str,
             return []
         
         result = response.json()
-        
+        pretty_json_string = json.dumps(result, indent=4)
+        print('milvus sources', pretty_json_string)
+
         sources = []
         if 'data' in result:
             for hit in result['data']:
@@ -125,7 +272,14 @@ async def search_similar_documents(query: str, limit: int = 5) -> List[Dict[str,
                         "metadata": hit.get('metadata', {})
                     })
         
-        return sources
+        # Apply reranking to improve result relevance
+        reranked_sources = await rerank_results(query, sources, limit)
+        
+        pretty_json_string = json.dumps(reranked_sources, indent=4)
+        print('reranked sources', pretty_json_string)
+    
+
+        return reranked_sources
         
     except Exception as e:
         print(f"Error searching documents: {e}")
@@ -218,13 +372,32 @@ async def chat(request: ChatRequest):
         # Get AI response
         response = await chat_with_gpt(request.message, history, sources)
         
+        # Prepare reranking information
+        reranking_info = {
+            "enabled": ENABLE_RERANKING,
+            "model": RERANKING_MODEL,
+            "initial_search_multiplier": INITIAL_SEARCH_MULTIPLIER,
+            "total_sources_found": len(sources),
+            "rerank_scores": [source.get('rerank_score', None) for source in sources if 'rerank_score' in source]
+        }
+        
         return ChatResponse(
             response=response,
-            sources=sources
+            sources=sources,
+            reranking_info=reranking_info
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/reranking-config", response_model=RerankingConfig)
+async def get_reranking_config():
+    """Get current reranking configuration."""
+    return RerankingConfig(
+        enabled=ENABLE_RERANKING,
+        model=RERANKING_MODEL,
+        initial_search_multiplier=INITIAL_SEARCH_MULTIPLIER
+    )
 
 @app.post("/api/add-document")
 async def add_document(request: AddDocumentRequest):
