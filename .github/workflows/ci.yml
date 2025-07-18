@@ -256,13 +256,3 @@ jobs:
             print(f'System status: {health.get(\"status\")}')
             print(f'Zilliz connected: {health.get(\"zilliz_connected\")}')
         "
-        
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: test-results
-        path: |
-          test_rag.py
-          *.log
-        retention-days: 7
