@@ -1,0 +1,86 @@
+name: RAG System CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  test-rag-system:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio httpx
+        
+    - name: Verify test file exists
+      run: |
+        if [ ! -f "test_rag.py" ]; then
+          echo "❌ test_rag.py file not found"
+          exit 1
+        fi
+        echo "✅ test_rag.py file found"
+        
+    - name: Run RAG system tests
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        MILVUS_URI: ${{ secrets.MILVUS_URI }}
+        MILVUS_TOKEN: ${{ secrets.MILVUS_TOKEN }}
+        ENABLE_RERANKING: "true"
+        RERANKING_MODEL: "o3"
+      run: |
+        python test_rag.py
+        
+    - name: Test API endpoints
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        MILVUS_URI: ${{ secrets.MILVUS_URI }}
+        MILVUS_TOKEN: ${{ secrets.MILVUS_TOKEN }}
+      run: |
+        echo "Testing API endpoints..."
+        python -c "
+        import asyncio
+        import sys
+        sys.path.insert(0, '.')
+        from index import app
+        from fastapi.testclient import TestClient
+        
+        client = TestClient(app)
+        
+        # Test reranking config endpoint
+        response = client.get('/api/reranking-config')
+        print(f'Reranking config status: {response.status_code}')
+        if response.status_code == 200:
+            config = response.json()
+            print(f'Reranking enabled: {config.get(\"enabled\")}')
+            print(f'Reranking model: {config.get(\"model\")}')
+        
+        # Test health endpoint
+        response = client.get('/api/health')
+        print(f'Health status: {response.status_code}')
+        if response.status_code == 200:
+            health = response.json()
+            print(f'System status: {health.get(\"status\")}')
+            print(f'Zilliz connected: {health.get(\"zilliz_connected\")}')
+        "
