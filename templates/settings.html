@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - AI Study Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1><i class="fas fa-graduation-cap"></i> AI Study Assistant</h1>
+                    <p>Settings & Configuration</p>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <a href="/dashboard" class="back-button">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="settings-container">
+                <h2><i class="fas fa-cog"></i> System Settings</h2>
+                
+                <!-- RAG System Status -->
+                <div class="settings-section">
+                    <h3><i class="fas fa-database"></i> RAG System Status</h3>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <span class="status-label">API Status:</span>
+                            <span id="apiStatus" class="status-value">Checking...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Milvus Database:</span>
+                            <span id="milvusStatus" class="status-value">Checking...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">OpenAI Connection:</span>
+                            <span id="openaiStatus" class="status-value">Checking...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Supabase Connection:</span>
+                            <span id="supabaseStatus" class="status-value">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RAG Sources -->
+                <div class="settings-section">
+                    <h3><i class="fas fa-file-alt"></i> Document Sources</h3>
+                    <div id="sourcesList" class="sources-list">
+                        <p class="no-sources">No sources available</p>
+                    </div>
+                    <button id="addDocumentButton" class="settings-button">
+                        <i class="fas fa-plus"></i> Add Document
+                    </button>
+                </div>
+
+                <!-- Configuration -->
+                <div class="settings-section">
+                    <h3><i class="fas fa-sliders-h"></i> RAG Configuration</h3>
+                    <div class="config-grid">
+                        <div class="config-item">
+                            <label for="enableReranking">Enable Reranking:</label>
+                            <input type="checkbox" id="enableReranking" checked>
+                        </div>
+                        <div class="config-item">
+                            <label for="rerankingModel">Reranking Model:</label>
+                            <select id="rerankingModel">
+                                <option value="gpt-3.5-turbo">GPT-3.5-Turbo</option>
+                                <option value="gpt-4">GPT-4</option>
+                            </select>
+                        </div>
+                        <div class="config-item">
+                            <label for="searchMultiplier">Search Multiplier:</label>
+                            <input type="number" id="searchMultiplier" value="3" min="1" max="10">
+                        </div>
+                    </div>
+                    <button id="saveConfigButton" class="settings-button">
+                        <i class="fas fa-save"></i> Save Configuration
+                    </button>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="settings-section">
+                    <h3><i class="fas fa-chart-bar"></i> Performance Metrics</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <span class="metric-label">Queries Processed:</span>
+                            <span id="queriesCount" class="metric-value">0</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Average Response Time:</span>
+                            <span id="avgResponseTime" class="metric-value">N/A</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Documents Indexed:</span>
+                            <span id="documentsCount" class="metric-value">0</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Last Updated:</span>
+                            <span id="lastUpdated" class="metric-value">Never</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Logs -->
+                <div class="settings-section">
+                    <h3><i class="fas fa-terminal"></i> System Logs</h3>
+                    <div class="logs-container">
+                        <div id="systemLogs" class="logs-content">
+                            <p class="log-entry">System initialized...</p>
+                        </div>
+                        <button id="clearLogsButton" class="settings-button secondary">
+                            <i class="fas fa-trash"></i> Clear Logs
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', path='/js/settings.js') }}"></script>
+</body>
+</html>

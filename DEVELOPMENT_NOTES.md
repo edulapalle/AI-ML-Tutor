@@ -14,6 +14,71 @@
 
 ## 🗓️ August 9, 2025
 
+### 16:40 - Removed Voice Recognition Button
+**Changes:**
+- ✅ Removed voice button from chat header actions
+- ✅ Removed voice recognition modal from template
+- ✅ Removed `initVoiceRecognition()` function from JavaScript
+- ✅ Cleaned up all voice-related event listeners
+- ✅ Removed speech recognition API integration
+
+**Rationale:**
+- Voice recognition capability was not fully implemented
+- Simplified UI by removing non-functional features
+- Clean chat interface with only working functionality
+
+**Impact:** Cleaner chat interface with only functional buttons
+
+---
+
+### 16:35 - Moved RAG System Info to Settings Page
+**Changes:**
+- ✅ Removed RAG Sources and Status sections from dashboard sidebar
+- ✅ Created dedicated `/settings` page for system configuration
+- ✅ Added comprehensive settings interface with:
+  - System status monitoring (API, Milvus, OpenAI, Supabase)
+  - RAG configuration options (reranking, model selection)
+  - Performance metrics tracking
+  - Document source management
+  - System logs with terminal-style display
+- ✅ Added settings link to user dropdown menu
+- ✅ Clean white sidebar space available for future features
+
+**Files Created:**
+- `templates/settings.html` - Settings page template
+- `static/js/settings.js` - Settings page functionality
+- Added settings styles to `static/css/style.css`
+
+**Technical Details:**
+- Settings page includes real-time status checking
+- Professional admin interface with grid layouts
+- Settings are saved via API endpoints
+- Clean separation of concerns (dashboard vs admin functions)
+
+**Impact:** Cleaner dashboard interface with admin functions properly organized
+
+---
+
+### 16:20 - Dynamic User Display in Dashboard Header
+**Changes:**
+- ✅ Fixed dashboard header to show actual logged-in user's name instead of generic "STUDENT"/"USER"
+- ✅ Updated `templates/index.html` to use dynamic placeholders with loading states
+- ✅ Enhanced `updateUserDisplay()` function in `chat.js` to populate:
+  - Welcome message with username
+  - Header dropdown with username
+  - User level and current stage information
+- ✅ Added proper text formatting for study level and current stage (capitalization)
+
+**Technical Details:**
+- Header now shows "Welcome, [Username]!" instead of "Welcome, Student!"
+- User menu button displays actual username instead of "User"
+- Chat header shows "Level: [Study Level] | Stage: [Current Stage]"
+- JavaScript handles dynamic updates after authentication token verification
+
+**Impact:** Personalized user experience with proper identification throughout the interface
+
+---
+
 ### 16:05 - Project Cleanup & Organization
 **Changes:**
 - ✅ Deleted unnecessary files: `secure_auth_service.py`, `test_rag.py`, `pyproject.toml`, `uv.lock`

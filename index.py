@@ -216,8 +216,7 @@ async def logout():
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Serve the main dashboard for authenticated users"""
-    # For browser navigation, we'll handle auth in the frontend
-    # The frontend will check for stored tokens and redirect if needed
+    # Frontend handles authentication and will populate user data after page load
     return templates.TemplateResponse("index.html", {"request": request})
 
 # Redirect root to login if not authenticated
@@ -241,6 +240,11 @@ async def terms_page(request: Request):
 async def privacy_page(request: Request):
     """Serve the privacy policy page"""
     return templates.TemplateResponse("privacy.html", {"request": request})
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """Serve the settings page for system configuration"""
+    return templates.TemplateResponse("settings.html", {"request": request})
 
 # Utility functions
 async def get_embedding(text: str) -> List[float]:

@@ -19,7 +19,7 @@ class ChatApp {
         this.autoResizeTextarea();
         this.initUserMenu();
         this.initQuickActions();
-        this.initVoiceRecognition();
+
         this.loadUserProfile();
     }
 
@@ -42,11 +42,7 @@ class ChatApp {
             clearButton.addEventListener('click', () => this.clearChat());
         }
 
-        // Voice button
-        const voiceButton = document.getElementById('voiceButton');
-        if (voiceButton) {
-            voiceButton.addEventListener('click', () => this.showVoiceModal());
-        }
+
 
         // Logout button
         const logoutButton = document.getElementById('logoutButton');
@@ -57,13 +53,7 @@ class ChatApp {
             });
         }
 
-        // Modal close on outside click
-        window.addEventListener('click', (e) => {
-            const voiceModal = document.getElementById('voiceModal');
-            if (e.target === voiceModal) {
-                this.hideVoiceModal();
-            }
-        });
+
     }
 
     initUserMenu() {
@@ -97,26 +87,7 @@ class ChatApp {
         });
     }
 
-    initVoiceRecognition() {
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            this.recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            this.recognition.continuous = false;
-            this.recognition.interimResults = false;
-            this.recognition.lang = 'en-US';
 
-            this.recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                document.getElementById('messageInput').value = transcript;
-                this.hideVoiceModal();
-                this.sendMessage();
-            };
-
-            this.recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                this.hideVoiceModal();
-            };
-        }
-    }
 
     autoResizeTextarea() {
         const textarea = document.getElementById('messageInput');
@@ -365,6 +336,23 @@ class ChatApp {
 
     updateUserDisplay(userData) {
         // Update user information in the UI
+        
+        // Update header user information
+        const welcomeUsername = document.getElementById('welcomeUsername');
+        const headerUsername = document.getElementById('headerUsername');
+        const userLevelInfo = document.getElementById('userLevelInfo');
+        
+        if (welcomeUsername) welcomeUsername.textContent = userData.username;
+        if (headerUsername) headerUsername.textContent = userData.username;
+        
+        // Format and display user level and stage information
+        if (userLevelInfo) {
+            const studyLevel = userData.study_level ? userData.study_level.charAt(0).toUpperCase() + userData.study_level.slice(1) : 'Unknown';
+            const currentStage = userData.current_stage ? userData.current_stage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown';
+            userLevelInfo.textContent = `Level: ${studyLevel} | Stage: ${currentStage}`;
+        }
+
+        // Update sidebar elements (if they exist)
         const usernameEl = document.querySelector('.username');
         const userLevelEl = document.querySelector('.user-level');
         const currentStageEl = document.querySelector('.current-stage');
