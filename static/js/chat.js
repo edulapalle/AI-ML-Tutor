@@ -1,16 +1,26 @@
-// Chat application JavaScript
+// Chat application JavaScript with authentication support
 class ChatApp {
     constructor() {
         this.conversationHistory = [];
         this.isLoading = false;
+        this.userData = window.userData || {};
         this.init();
     }
 
     init() {
+        // Check authentication first
+        if (!this.checkAuthentication()) {
+            return; // Will redirect to login
+        }
+        
         this.bindEvents();
         this.loadSettings();
         this.checkHealth();
         this.autoResizeTextarea();
+        this.initUserMenu();
+        this.initQuickActions();
+        this.initVoiceRecognition();
+        this.loadUserProfile();
     }
 
     bindEvents() {
@@ -27,32 +37,95 @@ class ChatApp {
         });
 
         // Clear chat
-        document.getElementById('clearButton').addEventListener('click', () => this.clearChat());
+        const clearButton = document.getElementById('clearButton');
+        if (clearButton) {
+            clearButton.addEventListener('click', () => this.clearChat());
+        }
 
-        // Add document modal
-        document.getElementById('addDocumentButton').addEventListener('click', () => this.showDocumentModal());
-        document.getElementById('cancelDocumentButton').addEventListener('click', () => this.hideDocumentModal());
-        document.getElementById('submitDocumentButton').addEventListener('click', () => this.addDocument());
-        document.querySelector('.close').addEventListener('click', () => this.hideDocumentModal());
+        // Voice button
+        const voiceButton = document.getElementById('voiceButton');
+        if (voiceButton) {
+            voiceButton.addEventListener('click', () => this.showVoiceModal());
+        }
 
-        // Save API key
-        document.getElementById('saveKeyButton').addEventListener('click', () => this.saveApiKey());
+        // Logout button
+        const logoutButton = document.getElementById('logoutButton');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
+        }
 
         // Modal close on outside click
         window.addEventListener('click', (e) => {
-            const modal = document.getElementById('documentModal');
-            if (e.target === modal) {
-                this.hideDocumentModal();
+            const voiceModal = document.getElementById('voiceModal');
+            if (e.target === voiceModal) {
+                this.hideVoiceModal();
             }
         });
     }
 
+    initUserMenu() {
+        const userMenuButton = document.getElementById('userMenuButton');
+        const userDropdown = document.getElementById('userDropdown');
+        
+        if (userMenuButton && userDropdown) {
+            userMenuButton.addEventListener('click', () => {
+                userDropdown.classList.toggle('show');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!userMenuButton.contains(e.target) && !userDropdown.contains(e.target)) {
+                    userDropdown.classList.remove('show');
+                }
+            });
+        }
+    }
+
+    initQuickActions() {
+        const quickActions = document.querySelectorAll('.quick-action');
+        quickActions.forEach(button => {
+            button.addEventListener('click', () => {
+                const question = button.dataset.question;
+                if (question) {
+                    document.getElementById('messageInput').value = question;
+                    this.sendMessage();
+                }
+            });
+        });
+    }
+
+    initVoiceRecognition() {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            this.recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            this.recognition.continuous = false;
+            this.recognition.interimResults = false;
+            this.recognition.lang = 'en-US';
+
+            this.recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('messageInput').value = transcript;
+                this.hideVoiceModal();
+                this.sendMessage();
+            };
+
+            this.recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                this.hideVoiceModal();
+            };
+        }
+    }
+
     autoResizeTextarea() {
         const textarea = document.getElementById('messageInput');
-        textarea.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-        });
+        if (textarea) {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+        }
     }
 
     async sendMessage() {
@@ -70,16 +143,31 @@ class ChatApp {
         this.showTypingIndicator();
 
         try {
+            // Get authentication token
+            const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+            
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const response = await fetch('/api/chat', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: headers,
                 body: JSON.stringify({
                     message: message,
                     conversation_history: this.conversationHistory
                 })
             });
+
+            if (response.status === 401) {
+                // Token expired or invalid, redirect to login
+                window.location.href = '/login';
+                return;
+            }
 
             const data = await response.json();
             
@@ -109,11 +197,26 @@ class ChatApp {
         messageContent.className = 'message-content';
         
         if (role === 'user') {
-            messageContent.innerHTML = `<i class="fas fa-user"></i>${this.escapeHtml(content)}`;
+            messageContent.innerHTML = `
+                <div class="message-header">
+                    <i class="fas fa-user"></i>
+                    <span class="message-author">${this.userData.username || 'You'}</span>
+                </div>
+                <div class="message-text">${this.escapeHtml(content)}</div>
+            `;
         } else if (role === 'assistant') {
-            messageContent.innerHTML = `<i class="fas fa-robot"></i>${this.escapeHtml(content)}`;
+            messageContent.innerHTML = `
+                <div class="message-header">
+                    <i class="fas fa-robot"></i>
+                    <span class="message-author">AI Assistant</span>
+                </div>
+                <div class="message-text">${this.formatResponse(content)}</div>
+            `;
         } else {
-            messageContent.innerHTML = content;
+            messageContent.innerHTML = `
+                <i class="fas fa-info-circle"></i>
+                ${this.escapeHtml(content)}
+            `;
         }
         
         messageDiv.appendChild(messageContent);
@@ -123,32 +226,51 @@ class ChatApp {
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
         // Add to conversation history
-        this.conversationHistory.push({ role, content });
+        this.conversationHistory.push({
+            role: role,
+            content: content
+        });
         
-        // Keep only last 20 messages
+        // Limit conversation history
         if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
         }
     }
 
+    formatResponse(content) {
+        // Convert markdown-like formatting to HTML
+        let formatted = this.escapeHtml(content);
+        
+        // Convert **bold** to <strong>bold</strong>
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Convert *italic* to <em>italic</em>
+        formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        
+        // Convert line breaks to <br>
+        formatted = formatted.replace(/\n/g, '<br>');
+        
+        return formatted;
+    }
+
     showTypingIndicator() {
         const chatMessages = document.getElementById('chatMessages');
         const typingDiv = document.createElement('div');
-        typingDiv.className = 'message assistant';
+        typingDiv.className = 'message assistant typing-indicator';
         typingDiv.id = 'typingIndicator';
         
-        const typingContent = document.createElement('div');
-        typingContent.className = 'typing-indicator';
-        typingContent.innerHTML = `
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
+        typingDiv.innerHTML = `
+            <div class="message-content">
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
         `;
         
-        typingDiv.appendChild(typingContent);
         chatMessages.appendChild(typingDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        this.isLoading = true;
     }
 
     hideTypingIndicator() {
@@ -156,114 +278,159 @@ class ChatApp {
         if (typingIndicator) {
             typingIndicator.remove();
         }
-        this.isLoading = false;
     }
 
     updateSources(sources) {
         const sourcesList = document.getElementById('sourcesList');
-        
+        if (!sourcesList) return;
+
         if (!sources || sources.length === 0) {
             sourcesList.innerHTML = '<p class="no-sources">No sources found for current query</p>';
             return;
         }
 
-        sourcesList.innerHTML = '';
-        sources.forEach((source, index) => {
-            const sourceDiv = document.createElement('div');
-            sourceDiv.className = 'source-item';
-            sourceDiv.innerHTML = `
-                <h4>Source ${index + 1}</h4>
-                <p>${this.escapeHtml(source.text.substring(0, 200))}${source.text.length > 200 ? '...' : ''}</p>
-                <p class="score">Relevance: ${(source.score * 100).toFixed(1)}%</p>
-                ${source.metadata ? `<p><small>${this.escapeHtml(source.metadata)}</small></p>` : ''}
-            `;
-            sourcesList.appendChild(sourceDiv);
-        });
+        sourcesList.innerHTML = sources.map(source => `
+            <div class="source-item">
+                <h4>${this.escapeHtml(source.metadata?.[0]?.channel_name || 'Unknown Source')}</h4>
+                <p>${this.escapeHtml(source.text.substring(0, 150))}...</p>
+                ${source.score ? `<span class="score">Score: ${source.score.toFixed(3)}</span>` : ''}
+            </div>
+        `).join('');
     }
 
     clearChat() {
         const chatMessages = document.getElementById('chatMessages');
-        chatMessages.innerHTML = `
-            <div class="message system-message">
-                <div class="message-content">
-                    <i class="fas fa-info-circle"></i>
-                    Welcome! I'm your AI assistant powered by ChatGPT and enhanced with RAG (Retrieval-Augmented Generation). 
-                    I can help you with questions and provide context-aware responses using the knowledge base.
-                </div>
-            </div>
-        `;
-        this.conversationHistory = [];
-        this.updateSources([]);
-    }
-
-    showDocumentModal() {
-        document.getElementById('documentModal').style.display = 'block';
-        document.getElementById('documentText').focus();
-    }
-
-    hideDocumentModal() {
-        document.getElementById('documentModal').style.display = 'none';
-        document.getElementById('documentText').value = '';
-        document.getElementById('documentMetadata').value = '';
-    }
-
-    async addDocument() {
-        const text = document.getElementById('documentText').value.trim();
-        const metadata = document.getElementById('documentMetadata').value.trim();
+        const systemMessage = chatMessages.querySelector('.message.system');
         
-        if (!text) {
-            alert('Please enter document text');
-            return;
+        chatMessages.innerHTML = '';
+        if (systemMessage) {
+            chatMessages.appendChild(systemMessage);
         }
+        
+        this.conversationHistory = [];
+    }
 
-        const submitButton = document.getElementById('submitDocumentButton');
-        const originalText = submitButton.innerHTML;
-        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
-        submitButton.disabled = true;
+    showVoiceModal() {
+        const voiceModal = document.getElementById('voiceModal');
+        if (voiceModal) {
+            voiceModal.style.display = 'flex';
+        }
+    }
 
+    hideVoiceModal() {
+        const voiceModal = document.getElementById('voiceModal');
+        if (voiceModal) {
+            voiceModal.style.display = 'none';
+        }
+    }
+
+    checkAuthentication() {
+        // Check if user has valid token
+        const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+        
+        if (!token) {
+            console.log('No authentication token found, redirecting to login');
+            window.location.href = '/login';
+            return false;
+        }
+        
+        // Store token for API requests
+        this.authToken = token;
+        return true;
+    }
+
+    async loadUserProfile() {
         try {
-            const response = await fetch('/api/add-document', {
-                method: 'POST',
+            const response = await fetch('/api/auth/profile', {
                 headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    text: text,
-                    metadata: metadata
-                })
+                    'Authorization': `Bearer ${this.authToken}`,
+                    'Content-Type': 'application/json'
+                }
             });
 
-            const data = await response.json();
-            
             if (response.ok) {
-                alert('Document added successfully!');
-                this.hideDocumentModal();
+                const userData = await response.json();
+                this.userData = userData;
+                this.updateUserDisplay(userData);
+            } else if (response.status === 401) {
+                // Token is invalid, redirect to login
+                this.logout();
             } else {
-                alert(`Error: ${data.detail || 'Failed to add document'}`);
+                console.error('Failed to load user profile');
             }
         } catch (error) {
-            console.error('Error adding document:', error);
-            alert('Error adding document. Please try again.');
-        } finally {
-            submitButton.innerHTML = originalText;
-            submitButton.disabled = false;
+            console.error('Error loading user profile:', error);
         }
     }
 
-    saveApiKey() {
-        const apiKey = document.getElementById('openaiKey').value.trim();
-        if (apiKey) {
-            localStorage.setItem('openai_api_key', apiKey);
-            alert('API key saved!');
-        } else {
-            alert('Please enter an API key');
+    updateUserDisplay(userData) {
+        // Update user information in the UI
+        const usernameEl = document.querySelector('.username');
+        const userLevelEl = document.querySelector('.user-level');
+        const currentStageEl = document.querySelector('.current-stage');
+
+        if (usernameEl) usernameEl.textContent = userData.username;
+        if (userLevelEl) userLevelEl.textContent = userData.study_level;
+        if (currentStageEl) currentStageEl.textContent = userData.current_stage;
+
+        // Update interests
+        const interestsList = document.querySelector('.interests-list');
+        if (interestsList && userData.topics_of_interest) {
+            interestsList.innerHTML = '';
+            userData.topics_of_interest.forEach(interest => {
+                const tag = document.createElement('span');
+                tag.className = 'interest-tag';
+                tag.textContent = interest;
+                interestsList.appendChild(tag);
+            });
+        }
+
+        // Update goals
+        const goalsList = document.querySelector('.goals-list');
+        if (goalsList && userData.current_goals) {
+            goalsList.innerHTML = '';
+            userData.current_goals.forEach(goal => {
+                const goalItem = document.createElement('div');
+                goalItem.className = 'goal-item';
+                goalItem.textContent = goal;
+                goalsList.appendChild(goalItem);
+            });
+        }
+    }
+
+    async logout() {
+        try {
+            const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+            
+            if (token) {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            // Clear local storage and redirect
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_info');
+            sessionStorage.removeItem('auth_token');
+            sessionStorage.removeItem('user_info');
+            
+            window.location.href = '/login';
         }
     }
 
     loadSettings() {
+        // Load any saved settings from localStorage
         const savedApiKey = localStorage.getItem('openai_api_key');
         if (savedApiKey) {
-            document.getElementById('openaiKey').value = savedApiKey;
+            const apiKeyInput = document.getElementById('openaiKey');
+            if (apiKeyInput) {
+                apiKeyInput.value = savedApiKey;
+            }
         }
     }
 
@@ -274,23 +441,18 @@ class ChatApp {
             
             const apiStatus = document.getElementById('apiStatus');
             const milvusStatus = document.getElementById('milvusStatus');
-            if (response.ok) {
-                apiStatus.textContent = 'Healthy';
-                apiStatus.className = 'status-value healthy';
-                milvusStatus.textContent = 'Connected';
-                milvusStatus.className = 'status-value healthy';
-            } else {
-                apiStatus.textContent = 'Error';
-                apiStatus.className = 'status-value error';
-                milvusStatus.textContent = 'Unknown';
-                milvusStatus.className = 'status-value error';
+            
+            if (apiStatus) {
+                apiStatus.textContent = data.status === 'healthy' ? 'Healthy' : 'Error';
+                apiStatus.className = `status-value ${data.status === 'healthy' ? 'healthy' : 'error'}`;
+            }
+            
+            if (milvusStatus) {
+                milvusStatus.textContent = data.milvus_status === 'connected' ? 'Connected' : 'Disconnected';
+                milvusStatus.className = `status-value ${data.milvus_status === 'connected' ? 'healthy' : 'error'}`;
             }
         } catch (error) {
             console.error('Health check failed:', error);
-            document.getElementById('apiStatus').textContent = 'Error';
-            document.getElementById('apiStatus').className = 'status-value error';
-            document.getElementById('milvusStatus').textContent = 'Unknown';
-            document.getElementById('milvusStatus').className = 'status-value error';
         }
     }
 
@@ -301,7 +463,7 @@ class ChatApp {
     }
 }
 
-// Initialize the chat application when the page loads
+// Initialize the chat application
 document.addEventListener('DOMContentLoaded', () => {
     new ChatApp();
 }); 

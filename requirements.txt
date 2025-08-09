@@ -5,3 +5,17 @@ python-dotenv
 mmh3
 requests
 jinja2
+# Supabase client for database operations and authentication
+supabase
+# JWT token handling for secure authentication
+python-jose[cryptography]
+# Password hashing and verification for secure user authentication
+passlib[bcrypt]==1.7.4
+# Compatible bcrypt version for passlib
+bcrypt==4.0.1
+# Form data parsing for login/registration forms
+python-multipart
+# Session management for user authentication state
+itsdangerous
+# Email validation for Pydantic EmailStr type
+email-validator

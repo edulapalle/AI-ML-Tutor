@@ -4,23 +4,28 @@ import json
 import requests
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Request, Depends, status
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 import openai
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
+# Import authentication modules
+from auth_models import UserRegistration, UserLogin, UserProfile
+from auth_service import AuthService
 
 # Load environment variables
 load_dotenv()
 
 # Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-MILVUS_URI = os.getenv("MILVUS_URI", "https://in03-4efcec782ae2f4c.serverless.gcp-us-west1.cloud.zilliz.com")
-MILVUS_TOKEN = os.getenv("MILVUS_TOKEN", "dca9ee30dd6accca68a63953d96a07cf3295cb68d1df55d93823135499762886d4ea0c5cb68b7307f72afce73a991ebc16447360")
-COLLECTION_NAME = "youtube_creator_videos"
+MILVUS_URI = os.getenv("MILVUS_URI")
+MILVUS_TOKEN = os.getenv("MILVUS_TOKEN")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME", "youtube_creator_videos")
 
 # Reranking configuration
 ENABLE_RERANKING = os.getenv("ENABLE_RERANKING", "true").lower() == "true"
@@ -33,6 +38,56 @@ if OPENAI_API_KEY:
     client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
 else:
     client = None
+
+# Security scheme for JWT tokens
+security = HTTPBearer()
+
+# Authentication dependency
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserProfile:
+    """
+    Dependency to get current authenticated user from JWT token
+    """
+    try:
+        # Verify the JWT token
+        token = credentials.credentials
+        payload = AuthService.verify_token(token)
+        
+        if payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Get user ID from token
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Get user profile from database
+        user = await AuthService.get_user_profile(user_id)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        return user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Authentication error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 # Pydantic models
 class ChatMessage(BaseModel):
@@ -57,10 +112,9 @@ class RerankingConfig(BaseModel):
     model: str = Field(..., description="Reranking model to use")
     initial_search_multiplier: int = Field(..., description="Multiplier for initial search results")
 
-
 # Create FastAPI app
 app = FastAPI(
-    title="ChatGPT RAG API",
+    title="AI Study Assistant",
     version="1.0.0",
 )
 
@@ -69,6 +123,124 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Templates
 templates = Jinja2Templates(directory="templates")
+
+# Dependency for getting current user
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[Dict[str, Any]]:
+    """Get current user from JWT token for authentication"""
+    try:
+        payload = AuthService.verify_token(credentials.credentials)
+        if payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return await AuthService.get_user_profile(user_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+# Authentication routes
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Serve the login page for user authentication"""
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    """Serve the registration page for new user signup"""
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@app.post("/api/auth/register")
+async def register_user(user_data: UserRegistration):
+    """Register a new user with comprehensive study information"""
+    try:
+        result = await AuthService.register_user(user_data)
+        return {
+            "access_token": result["access_token"],
+            "token_type": "bearer",
+            "user": result
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Registration failed")
+
+@app.post("/api/auth/login")
+async def login_user(user_data: UserLogin):
+    """Authenticate user and return access token for secure login"""
+    try:
+        user = await AuthService.authenticate_user(user_data.email, user_data.password)
+        if not user:
+            raise HTTPException(status_code=401, detail="Incorrect email or password")
+        
+        access_token = AuthService.create_access_token(data={"sub": user["id"]})
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user["id"],
+                "username": user["username"],
+                "email": user["email"]
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Login failed")
+
+@app.get("/api/auth/validate")
+async def validate_token(current_user: UserProfile = Depends(get_current_user)):
+    """Validate JWT token and return user information"""
+    return {"valid": True, "user": current_user}
+
+@app.get("/api/auth/profile")
+async def get_profile(current_user: UserProfile = Depends(get_current_user)):
+    """Get current user profile information"""
+    return current_user
+
+@app.post("/api/auth/logout")
+async def logout():
+    """Logout user by clearing session data"""
+    return {"message": "Logged out successfully"}
+
+# Protected dashboard route
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    """Serve the main dashboard for authenticated users"""
+    # For browser navigation, we'll handle auth in the frontend
+    # The frontend will check for stored tokens and redirect if needed
+    return templates.TemplateResponse("index.html", {"request": request})
+
+# Redirect root to login if not authenticated
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    """Redirect to login page for unauthenticated users"""
+    return RedirectResponse(url="/login")
+
+# Missing routes that are referenced in templates
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    """Serve the forgot password page"""
+    return templates.TemplateResponse("forgot-password.html", {"request": request})
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_page(request: Request):
+    """Serve the terms of service page"""
+    return templates.TemplateResponse("terms.html", {"request": request})
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    """Serve the privacy policy page"""
+    return templates.TemplateResponse("privacy.html", {"request": request})
 
 # Utility functions
 async def get_embedding(text: str) -> List[float]:
@@ -285,15 +457,28 @@ async def search_similar_documents(query: str, limit: int = 10) -> List[Dict[str
         print(f"Error searching documents: {e}")
         return []
 
-async def chat_with_gpt(message: str, conversation_history: List[ChatMessage], sources: Optional[List[Dict[str, Any]]] = None) -> str:
-    """Chat with GPT using conversation history and optional RAG sources."""
+async def chat_with_gpt_personalized(message: str, conversation_history: List[ChatMessage], sources: Optional[List[Dict[str, Any]]] = None, user_profile: Optional[UserProfile] = None) -> str:
+    """Chat with GPT using conversation history, RAG sources, and personalized user profile."""
     if not client:
         return "OpenAI API key not configured."
     try:
-        # Prepare system message
-        system_message = "You are a helpful AI assistant. Provide accurate and helpful responses. Provide all YouTube Links in the sources in the response"
+        # Prepare personalized system message based on user profile
+        system_message = "You are a helpful AI study assistant. Provide accurate and helpful responses."
+        
+        # Add personalization based on user profile
+        if user_profile:
+            personalization = f"""
+You are helping {user_profile.username}, a {user_profile.study_level} level student currently in {user_profile.current_stage}.
+Their interests include: {', '.join(user_profile.topics_of_interest)}
+Their current goals are: {', '.join(user_profile.current_goals)}
+"""
+            if user_profile.preferred_learning_style:
+                personalization += f"\nThey prefer {user_profile.preferred_learning_style} learning style."
+            
+            system_message += personalization + "\n\nPlease tailor your responses to their level and interests."
+        
+        # Add RAG sources context
         if sources:
-            # Enhanced context with channel information
             context_parts = []
             for source in sources:
                 try:
@@ -303,7 +488,6 @@ async def chat_with_gpt(message: str, conversation_history: List[ChatMessage], s
                     youtube_id = metadata.get('youtube_id', '')
                     timestamp = metadata.get('start_time', '')
                     
-
                     print(channel_name, metadata)
                     # Format timestamp if available
                     if timestamp:
@@ -316,7 +500,7 @@ async def chat_with_gpt(message: str, conversation_history: List[ChatMessage], s
                     # Include YouTube ID if available
                     youtube_info = f" (ID: https://www.youtube.com/watch?v={youtube_id}&t={str(round(timestamp))}s )" if youtube_id else ""
                     context_parts.append(f"Source ({channel_name} - {video_title}{youtube_info} : {source['text']}")
-                except Exception as e :
+                except Exception as e:
                     print(e)
                     # Fallback if metadata parsing fails
                     context_parts.append(f"Source: {source['text']}")
@@ -324,7 +508,6 @@ async def chat_with_gpt(message: str, conversation_history: List[ChatMessage], s
             context = "\n\n".join(context_parts)
             system_message += f"\n\n<Sources>:\n{context}"
         
-
         print(system_message)
         # Prepare messages
         messages = [{"role": "system", "content": system_message}]
@@ -350,15 +533,14 @@ async def chat_with_gpt(message: str, conversation_history: List[ChatMessage], s
         print(f"Error chatting with GPT: {e}")
         return "I apologize, but I'm having trouble processing your request right now."
 
-# Routes
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """Serve the main chat interface."""
-    return templates.TemplateResponse("index.html", {"request": request})
+async def chat_with_gpt(message: str, conversation_history: List[ChatMessage], sources: Optional[List[Dict[str, Any]]] = None) -> str:
+    """Legacy chat function for backward compatibility."""
+    return await chat_with_gpt_personalized(message, conversation_history, sources, None)
 
+# Routes
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    """Chat endpoint with RAG integration."""
+async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_current_user)):
+    """Chat endpoint with RAG integration - requires authentication."""
     try:
         # Search for relevant documents
         sources = await search_similar_documents(request.message)
@@ -369,8 +551,8 @@ async def chat(request: ChatRequest):
         history = [ChatMessage(role=msg.role, content=msg.content) 
                   for msg in request.conversation_history]
         
-        # Get AI response
-        response = await chat_with_gpt(request.message, history, sources)
+        # Get AI response - personalize based on user profile
+        response = await chat_with_gpt_personalized(request.message, history, sources, current_user)
         
         # Prepare reranking information
         reranking_info = {

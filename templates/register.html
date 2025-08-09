@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - AI Study Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/auth.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card register-card">
+            <div class="auth-header">
+                <h1><i class="fas fa-user-plus"></i> Create Account</h1>
+                <p>Join our AI Study Assistant and start your personalized learning journey!</p>
+            </div>
+
+            <form id="registerForm" class="auth-form">
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h3><i class="fas fa-user"></i> Basic Information</h3>
+                    
+                    <div class="form-group">
+                        <label for="username">
+                            <i class="fas fa-user"></i> Username
+                        </label>
+                        <input type="text" id="username" name="username" required 
+                               placeholder="Choose a unique username" minlength="3" maxlength="50">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fas fa-envelope"></i> Email Address
+                        </label>
+                        <input type="email" id="email" name="email" required 
+                               placeholder="Enter your email address">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i> Password
+                        </label>
+                        <div class="password-input">
+                            <input type="password" id="password" name="password" required 
+                                   placeholder="Create a strong password" minlength="8">
+                            <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">
+                            <i class="fas fa-lock"></i> Confirm Password
+                        </label>
+                        <div class="password-input">
+                            <input type="password" id="confirmPassword" name="confirmPassword" required 
+                                   placeholder="Confirm your password">
+                            <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dateOfBirth">
+                            <i class="fas fa-calendar"></i> Date of Birth
+                        </label>
+                        <input type="date" id="dateOfBirth" name="dateOfBirth" required>
+                    </div>
+                </div>
+
+                <!-- Study Information -->
+                <div class="form-section">
+                    <h3><i class="fas fa-graduation-cap"></i> Study Information</h3>
+                    
+                    <div class="form-group">
+                        <label for="currentStage">
+                            <i class="fas fa-school"></i> Current Stage of Life
+                        </label>
+                        <select id="currentStage" name="currentStage" required>
+                            <option value="">Select your current stage</option>
+                            <option value="elementary_school">Elementary School</option>
+                            <option value="middle_school">Middle School</option>
+                            <option value="high_school">High School</option>
+                            <option value="college">College/University</option>
+                            <option value="graduate_school">Graduate School</option>
+                            <option value="work">Working Professional</option>
+                            <option value="self_study">Self-Study</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="studyLevel">
+                            <i class="fas fa-chart-line"></i> Study Level
+                        </label>
+                        <select id="studyLevel" name="studyLevel" required>
+                            <option value="">Select your study level</option>
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topicsOfInterest">
+                            <i class="fas fa-book"></i> Topics of Interest
+                        </label>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="ml_foundations">
+                                <span class="checkmark"></span> ML Foundations
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="supervised_learning">
+                                <span class="checkmark"></span> Supervised Learning
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="unsupervised_learning">
+                                <span class="checkmark"></span> Unsupervised Learning
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="model_evaluation">
+                                <span class="checkmark"></span> Model Evaluation
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="data_prep_features">
+                                <span class="checkmark"></span> Data Prep & Features (EDA)
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="optimization">
+                                <span class="checkmark"></span> Optimization
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="interpretability_ethics">
+                                <span class="checkmark"></span> Interpretability & Ethics
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="deep_learning_basics">
+                                <span class="checkmark"></span> Deep Learning Basics
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="llm_generative_ai">
+                                <span class="checkmark"></span> LLM & Generative AI
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="practical_ml">
+                                <span class="checkmark"></span> Practical ML
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="topicsOfInterest" value="production_ml">
+                                <span class="checkmark"></span> Production ML
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="currentGoals">
+                            <i class="fas fa-target"></i> Current Study Goals
+                        </label>
+                        <textarea id="currentGoals" name="currentGoals" rows="3" 
+                                  placeholder="What are your current ML/AI learning goals? (e.g., master supervised learning algorithms, build deep learning models, deploy ML models to production, understand model interpretability)"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="preferredLearningStyle">
+                            <i class="fas fa-brain"></i> Preferred Study Method
+                        </label>
+                        <select id="preferredLearningStyle" name="preferredLearningStyle">
+                            <option value="">Select your preferred study method (optional)</option>
+                            <option value="study_only">Study Only (concepts and theory)</option>
+                            <option value="study_and_test">Study and Test (with quizzes and assessments)</option>
+                            <option value="study_and_demo">Study and Live Example Demo Build (hands-on projects)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="terms" name="terms" required>
+                        <span class="checkmark"></span>
+                        I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a>
+                    </label>
+                </div>
+
+                <button type="submit" class="auth-button">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+            </form>
+
+            <div class="auth-divider">
+                <span>or</span>
+            </div>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="/login" class="auth-link">Sign in here</a></p>
+            </div>
+
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='/js/auth.js') }}"></script>
+</body>
+</html>

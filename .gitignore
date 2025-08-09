@@ -1,2 +1,100 @@
-.vercel
+# Environment variables and sensitive configuration
+.env
+.env.local
+.env.production
+.env.development
+config.py
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.venv.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# Vercel
+.vercel
+
+# Temporary files
+*.tmp
+*.temp
+
+# Package manager files
+uv.lock
+poetry.lock
+Pipfile.lock
+
+# Test and coverage files
+.coverage
+.pytest_cache/
+.tox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Security and backup files
+*.key
+*.pem
+*.crt
+backup/
+*.backup
+
+# Node.js (if any frontend tools are added)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Personal development notes (optional - remove if you want to track in git)
+# DEVELOPMENT_NOTES.md
