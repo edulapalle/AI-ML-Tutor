@@ -95,8 +95,8 @@ This project implements a comprehensive AI study assistant specifically designed
 
 4. **Set up environment variables**
    ```bash
-   # Copy example environment file
-   cp env.example .env
+   # Create your .env file
+   touch .env
    
    # Edit the .env file with your actual credentials
    # IMPORTANT: Never commit your .env file to version control!
@@ -115,10 +115,9 @@ This project implements a comprehensive AI study assistant specifically designed
    # JWT Configuration (required for authentication)
    JWT_SECRET_KEY=your_jwt_secret_key_here_change_in_production
    
-   # Milvus/Zilliz Configuration (optional - for RAG features)
-   MILVUS_URI=your_milvus_uri_here
-   MILVUS_TOKEN=your_milvus_token_here
-   COLLECTION_NAME=youtube_creator_videos
+   # Zilliz Cloud Configuration (required - for RAG features)
+   MILVUS_URI=https://your-cluster-id.zillizcloud.com:port
+   MILVUS_TOKEN=your_zilliz_cloud_token_here
    
    # Server Configuration (optional)
    HOST=0.0.0.0
@@ -134,12 +133,18 @@ This project implements a comprehensive AI study assistant specifically designed
    - Run the SQL commands from `database_schema.sql` in your Supabase SQL editor
    - Configure Row Level Security (RLS) policies as defined in the schema
 
-7. **Run the application**
+7. **Initialize ML Concepts Database (One-time setup)**
+   ```bash
+   # Run this once to populate your Zilliz Cloud with ML concepts
+   python populate_ml_concepts.py
+   ```
+
+8. **Run the application**
    ```bash
    python index.py
    ```
 
-8. **Access the application**
+9. **Access the application**
    - Open your browser and navigate to `http://localhost:8000`
    - You'll be redirected to the login page
    - Register a new account or log in with existing credentials

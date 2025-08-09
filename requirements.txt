@@ -3,6 +3,8 @@ uvicorn
 openai
 python-dotenv
 mmh3
+pymilvus  # Vector database for RAG system and concept storage
+sentence-transformers  # For creating embeddings of ML concepts
 requests
 jinja2
 # Supabase client for database operations and authentication

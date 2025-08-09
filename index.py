@@ -18,6 +18,9 @@ from datetime import datetime, timedelta
 from auth_models import UserRegistration, UserLogin, UserProfile
 from auth_service import AuthService
 
+# Import RAG system
+from rag_system import get_rag_system
+
 # Load environment variables
 load_dotenv()
 
@@ -245,6 +248,66 @@ async def privacy_page(request: Request):
 async def settings_page(request: Request):
     """Serve the settings page for system configuration"""
     return templates.TemplateResponse("settings.html", {"request": request})
+
+@app.get("/api/status")
+async def get_system_status():
+    """Get comprehensive system status including RAG components."""
+    try:
+        # Get RAG system status
+        rag_system = get_rag_system()
+        rag_status = rag_system.get_system_status()
+        
+        # Check other system components
+        openai_status = bool(os.getenv('OPENAI_API_KEY'))
+        supabase_status = bool(os.getenv('SUPABASE_URL') and os.getenv('SUPABASE_ANON_KEY'))
+        
+        return {
+            "status": "healthy",
+            "components": {
+                "openai": {
+                    "status": "connected" if openai_status else "disconnected",
+                    "configured": openai_status
+                },
+                "supabase": {
+                    "status": "connected" if supabase_status else "disconnected", 
+                    "configured": supabase_status
+                },
+                "milvus": {
+                    "status": "connected" if rag_status["milvus_connected"] else "disconnected",
+                    "configured": rag_status["milvus_connected"]
+                },
+                "rag_system": {
+                    "status": "operational" if all([
+                        rag_status["milvus_connected"],
+                        rag_status["openai_available"],
+                        rag_status["sentence_transformer_loaded"],
+                        rag_status["collection_exists"]
+                    ]) else "degraded",
+                    "details": rag_status
+                }
+            },
+            "ml_concepts": {
+                "total_concepts": rag_status["concepts_count"],
+                "categories": [
+                    "ML Foundations", "Supervised Learning", "Unsupervised Learning",
+                    "Model Evaluation", "Data Prep & Features (EDA)", "Optimization",
+                    "Interpretability & Ethics", "Deep Learning Basics", 
+                    "LLM & Generative AI", "Practical ML Production"
+                ]
+            }
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "components": {
+                "openai": {"status": "unknown"},
+                "supabase": {"status": "unknown"},
+                "milvus": {"status": "unknown"},
+                "rag_system": {"status": "error"}
+            }
+        }
 
 # Utility functions
 async def get_embedding(text: str) -> List[float]:
@@ -544,25 +607,47 @@ async def chat_with_gpt(message: str, conversation_history: List[ChatMessage], s
 # Routes
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_current_user)):
-    """Chat endpoint with RAG integration - requires authentication."""
+    """Chat endpoint with ML concepts RAG integration - requires authentication."""
     try:
-        # Search for relevant documents
-        sources = await search_similar_documents(request.message)
+        # Initialize RAG system
+        rag_system = get_rag_system()
         
-        print(sources)
-
-        # Convert conversation history to ChatMessage objects
-        history = [ChatMessage(role=msg.role, content=msg.content) 
-                  for msg in request.conversation_history]
+        # Convert user profile to dictionary for RAG system
+        user_profile_dict = {
+            "study_level": current_user.study_level,
+            "topics_of_interest": current_user.topics_of_interest,
+            "preferred_learning_style": current_user.preferred_learning_style,
+            "current_stage": current_user.current_stage
+        }
         
-        # Get AI response - personalize based on user profile
-        response = await chat_with_gpt_personalized(request.message, history, sources, current_user)
+        # Generate response using RAG system with ML concepts
+        response = rag_system.generate_response(request.message, user_profile_dict)
+        
+        # Get relevant concepts for sources
+        relevant_concepts = rag_system.search_concepts(request.message, top_k=3)
+        
+        # Format sources from ML concepts
+        sources = []
+        for concept in relevant_concepts:
+            source = {
+                "title": concept["concept"],
+                "content": concept["definition"],
+                "category": concept["category"],
+                "difficulty": concept["difficulty"],
+                "similarity_score": concept.get("similarity_score", 0),
+                "metadata": {
+                    "child_analogy": concept["child_analogy"],
+                    "real_world_example": concept["real_world_example"],
+                    "keywords": concept["keywords"]
+                }
+            }
+            sources.append(source)
         
         # Prepare reranking information
         reranking_info = {
-            "enabled": ENABLE_RERANKING,
-            "model": RERANKING_MODEL,
-            "initial_search_multiplier": INITIAL_SEARCH_MULTIPLIER,
+            "enabled": True,
+            "model": "gpt-3.5-turbo",
+            "initial_search_multiplier": 3,
             "total_sources_found": len(sources),
             "rerank_scores": [source.get('rerank_score', None) for source in sources if 'rerank_score' in source]
         }

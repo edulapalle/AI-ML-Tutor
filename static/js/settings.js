@@ -36,70 +36,94 @@ class SettingsManager {
         
         // Check API status
         try {
-            const response = await fetch('/api/health');
-            const apiStatus = document.getElementById('apiStatus');
-            if (response.ok) {
+            const response = await fetch('/api/status');
+            if (!response.ok) throw new Error('Status check failed');
+            
+            const statusData = await response.json();
+            this.updateSystemStatus(statusData);
+            
+        } catch (error) {
+            console.error('Error checking system status:', error);
+            this.updateSystemStatusError();
+        }
+
+    }
+
+    updateSystemStatus(statusData) {
+        // Update API status
+        const apiStatus = document.getElementById('apiStatus');
+        if (apiStatus) {
+            if (statusData.status === 'healthy') {
                 apiStatus.textContent = '✅ Online';
                 apiStatus.className = 'status-value online';
             } else {
-                apiStatus.textContent = '❌ Offline';
+                apiStatus.textContent = '❌ Error';
                 apiStatus.className = 'status-value offline';
             }
-        } catch (error) {
-            const apiStatus = document.getElementById('apiStatus');
-            apiStatus.textContent = '❌ Error';
-            apiStatus.className = 'status-value error';
         }
 
-        // Check Milvus status
-        try {
-            const response = await fetch('/api/milvus-status');
-            const milvusStatus = document.getElementById('milvusStatus');
-            if (response.ok) {
-                const data = await response.json();
-                milvusStatus.textContent = data.connected ? '✅ Connected' : '❌ Disconnected';
-                milvusStatus.className = data.connected ? 'status-value online' : 'status-value offline';
+        // Update Milvus status
+        const milvusStatus = document.getElementById('milvusStatus');
+        if (milvusStatus) {
+            const milvus = statusData.components.milvus;
+            if (milvus.status === 'connected') {
+                milvusStatus.textContent = `✅ Connected (${statusData.ml_concepts.total_concepts} concepts)`;
+                milvusStatus.className = 'status-value online';
             } else {
-                milvusStatus.textContent = '❌ Unavailable';
+                milvusStatus.textContent = '❌ Disconnected';
                 milvusStatus.className = 'status-value offline';
             }
-        } catch (error) {
-            const milvusStatus = document.getElementById('milvusStatus');
-            milvusStatus.textContent = '❌ Error';
-            milvusStatus.className = 'status-value error';
         }
 
-        // Check OpenAI status
+        // Update OpenAI status
         const openaiStatus = document.getElementById('openaiStatus');
-        try {
-            const response = await fetch('/api/openai-status');
-            if (response.ok) {
+        if (openaiStatus) {
+            const openai = statusData.components.openai;
+            if (openai.status === 'connected') {
                 openaiStatus.textContent = '✅ Connected';
                 openaiStatus.className = 'status-value online';
             } else {
-                openaiStatus.textContent = '❌ Disconnected';
+                openaiStatus.textContent = '❌ Not configured';
                 openaiStatus.className = 'status-value offline';
             }
-        } catch (error) {
-            openaiStatus.textContent = '❌ Error';
-            openaiStatus.className = 'status-value error';
         }
 
-        // Check Supabase status
+        // Update Supabase status
         const supabaseStatus = document.getElementById('supabaseStatus');
-        try {
-            const response = await fetch('/api/supabase-status');
-            if (response.ok) {
+        if (supabaseStatus) {
+            const supabase = statusData.components.supabase;
+            if (supabase.status === 'connected') {
                 supabaseStatus.textContent = '✅ Connected';
                 supabaseStatus.className = 'status-value online';
             } else {
-                supabaseStatus.textContent = '❌ Disconnected';
+                supabaseStatus.textContent = '❌ Not configured';
                 supabaseStatus.className = 'status-value offline';
             }
-        } catch (error) {
-            supabaseStatus.textContent = '❌ Error';
-            supabaseStatus.className = 'status-value error';
         }
+
+        // Update RAG system status
+        const ragStatus = document.getElementById('ragStatus');
+        if (ragStatus) {
+            const rag = statusData.components.rag_system;
+            if (rag.status === 'operational') {
+                ragStatus.textContent = '✅ Operational';
+                ragStatus.className = 'status-value online';
+            } else {
+                ragStatus.textContent = '⚠️ Degraded';
+                ragStatus.className = 'status-value offline';
+            }
+        }
+    }
+
+    updateSystemStatusError() {
+        const statusElements = ['apiStatus', 'milvusStatus', 'openaiStatus', 'supabaseStatus', 'ragStatus'];
+        statusElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = '❌ Error';
+                element.className = 'status-value offline';
+            }
+        });
     }
 
     async loadConfiguration() {
