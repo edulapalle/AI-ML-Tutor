@@ -9,6 +9,10 @@ pymilvus  # Vector database for RAG system and concept storage
 sentence-transformers  # For creating embeddings of ML concepts
 requests
 jinja2
+neo4j  # Neo4j database driver for knowledge graph storage
+yt-dlp  # YouTube video metadata extraction
+youtube-transcript-api  # YouTube video transcript extraction
+nltk  # Natural language processing for keyword extraction
 
 # Supabase client for database operations and authentication
 supabase

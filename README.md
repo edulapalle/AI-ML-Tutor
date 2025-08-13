@@ -1,326 +1,264 @@
-# AI Study Assistant
+# AI Bootcamp Capstone Project - AI/ML Educational Platform
 
-This repository contains an AI bootcamp capstone project that demonstrates a secure, personalized AI study assistant with authentication and RAG (Retrieval-Augmented Generation) capabilities.
+**Date**: August 2025  
+**Author**: Santosh Edulapalle
 
-## Project Details
+## 🎯 Project Overview
 
-- **Project Type**: AI Bootcamp Capstone Project
-- **Date**: August 2025
-- **Author**: Santosh Edulapalle
+An intelligent AI/ML educational platform that combines:
+- **Child-friendly UI** with age-appropriate learning
+- **RAG System** using Milvus/Zilliz Cloud for ML concept retrieval
+- **YouTube Knowledge Graph** using Neo4j for video recommendations
+- **Secure Authentication** with Supabase and JWT
+- **Personalized Learning** based on user age and study preferences
 
-## Description
+## ✨ Key Features
 
-This project implements a comprehensive AI study assistant specifically designed for Machine Learning and AI education. It combines secure user authentication, personalized learning experiences, and RAG (Retrieval-Augmented Generation) capabilities. The application features:
+### 🧠 **AI/ML Tutoring System**
+- **RAG-powered responses** using Milvus vector database
+- **Age-appropriate explanations** for different learning levels
+- **Content guardrails** ensuring ML/AI focus only
+- **Conversation continuity** with context awareness
 
-- **Secure Authentication**: User registration and login with Supabase
-- **ML/AI Focused Learning**: Specialized curriculum covering 11 key ML/AI topics
-- **Personalized Study Methods**: Three distinct study approaches (theory, testing, hands-on)
-- **Study Tracking**: Progress monitoring and goal management
-- **RAG Integration**: AI-powered question answering with document retrieval
-- **Modern UI**: Clean, responsive interface optimized for ML/AI learning
+### 🎥 **YouTube Knowledge Graph**
+- **Multi-channel scraping** of high-profile AI/ML channels
+- **Intelligent keyword extraction** prioritizing ML/AI terms
+- **Neo4j storage** with rich metadata and relationships
+- **Video recommendations** based on keyword similarity
 
-## Features
+### 🔐 **Secure User Management**
+- **JWT authentication** with Supabase backend
+- **User profiles** with ML/AI topics of interest
+- **Study method preferences** (Study Only, Study+Test, Study+Demo)
+- **Age-based personalization** for learning content
 
-### 🔐 Authentication & User Management
-- Secure user registration with comprehensive study information
-- JWT-based authentication with session management
-- User profile management with study preferences
-- Password hashing and secure token handling
+### 🎨 **Child-Friendly Interface**
+- **Bright, engaging design** with animations
+- **Simplified navigation** and quick actions
+- **Personalized dashboard** showing user progress
+- **Responsive design** for all devices
 
-### 🎯 Personalized Learning
-- Study level assessment (beginner, intermediate, advanced)
-- ML/AI topic specialization with 11 focused areas:
-  - ML Foundations
-  - Supervised Learning
-  - Unsupervised Learning
-  - Model Evaluation
-  - Data Prep & Features (EDA)
-  - Optimization
-  - Interpretability & Ethics
-  - Deep Learning Basics
-  - LLM & Generative AI
-  - Practical ML
-  - Production ML
-- Study method preferences:
-  - Study Only (concepts and theory)
-  - Study and Test (with quizzes and assessments)
-  - Study and Live Example Demo Build (hands-on projects)
-- Current goals and progress monitoring
-- Machine learning curriculum alignment
-
-### 🤖 AI-Powered Assistance
-- RAG (Retrieval-Augmented Generation) integration
-- Personalized responses based on user profile
-- Document retrieval and context-aware answers
-- Study session tracking and analytics
-
-### 📊 Study Management
-- Learning goals tracking
-- Progress monitoring
-- Study session history
-- Topic proficiency tracking
-- Study materials organization
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
-
-1. Python 3.8 or higher
-2. Supabase account and project
-3. OpenAI API key
-4. Milvus/Zilliz account (optional, for RAG features)
+- Python 3.8+
+- Neo4j Aura Cloud instance
+- Milvus/Zilliz Cloud instance
+- OpenAI API key
+- Supabase project
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd rag-vercel-example
-   ```
-
-2. **Create and activate virtual environment**
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   # Install uv for package management
-   pip install uv
-   
-   # Install project dependencies
-   uv pip install -r requirements.txt
-   ```
-
-4. **Set up environment variables**
-   ```bash
-   # Create your .env file
-   touch .env
-   
-   # Edit the .env file with your actual credentials
-   # IMPORTANT: Never commit your .env file to version control!
-   ```
-
-5. **Configure your .env file**
-   ```env
-   # OpenAI Configuration (required)
-   OPENAI_API_KEY=your_openai_api_key_here
-   
-   # Supabase Configuration (required for authentication)
-   SUPABASE_URL=https://your-project-id.supabase.co
-   SUPABASE_ANON_KEY=your_supabase_anon_key_here
-   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
-   
-   # JWT Configuration (required for authentication)
-   JWT_SECRET_KEY=your_jwt_secret_key_here_change_in_production
-   
-   # Zilliz Cloud Configuration (required - for RAG features)
-   MILVUS_URI=https://your-cluster-id.zillizcloud.com:port
-   MILVUS_TOKEN=your_zilliz_cloud_token_here
-   
-   # Server Configuration (optional)
-   HOST=0.0.0.0
-   PORT=8000
-   
-   # Security Configuration (optional)
-   CORS_ORIGINS=http://localhost:3000,http://localhost:8000
-   SESSION_SECRET=your_session_secret_here_change_in_production
-   ```
-
-6. **Set up Supabase database**
-   - Create a new Supabase project
-   - Run the SQL commands from `database_schema.sql` in your Supabase SQL editor
-   - Configure Row Level Security (RLS) policies as defined in the schema
-
-7. **Initialize ML Concepts Database (One-time setup)**
-   ```bash
-   # Check system status (optional, read-only)
-   python check_ml_concepts.py
-   
-   # Populate ML concepts (run once)
-   python populate_ml_concepts.py
-   
-   # Clean up if needed (removes collection)
-   python cleanup_ml_concepts.py
-   ```
-
-8. **Test RAG System (Optional)**
-   ```bash
-   # Test child-friendly retrieval and responses
-   python test_rag_retrieval.py
-   
-   # Test safety guardrails and content filtering
-   python test_guardrails.py
-   ```
-
-9. **Run the application**
-   ```bash
-   python index.py
-   ```
-
-10. **Access the application**
-   - Open your browser and navigate to `http://localhost:8000`
-   - You'll be redirected to the login page
-   - Register a new account or log in with existing credentials
-
-## Utility Scripts
-
-The project includes several utility scripts for managing the RAG system:
-
-### RAG Management Scripts
-- **`populate_ml_concepts.py`** - One-time population of ML concepts in Zilliz Cloud
-- **`check_ml_concepts.py`** - Read-only status check of collection and system health
-- **`cleanup_ml_concepts.py`** - Clean up and reset the ML concepts collection
-- **`test_rag_retrieval.py`** - Comprehensive testing of child-friendly retrieval
-- **`test_guardrails.py`** - Test safety guardrails and content filtering
-
-
-
-### Usage Examples
+1. **Clone and setup virtual environment**
 ```bash
-# Check if everything is working
-python check_ml_concepts.py
-
-# Populate concepts (first time only)
-python populate_ml_concepts.py
-
-# Test the RAG system thoroughly
-python test_rag_retrieval.py
-
-# Test safety and content filtering
-python test_guardrails.py
-
-# Reset collection if needed
-python cleanup_ml_concepts.py
-
-
+git clone <repository-url>
+cd rag-vercel-example
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-## Safety & Educational Features
+2. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
 
-This AI/ML tutor is designed with comprehensive safety measures and educational excellence standards:
+3. **Configure environment variables**
+Create a `.env` file with:
+```env
+# OpenAI
+OPENAI_API_KEY=your_openai_key
 
-### 🛡️ Content Guardrails
-- **Scope Restriction**: Only answers ML/AI/Data Science questions
-- **Safe Redirects**: Politely redirects off-topic questions to educational content
-- **Age-Appropriate Responses**: Tailored language and examples for different age groups
-- **Ethical AI Focus**: Redirects harmful AI questions to responsible practices
+# Supabase
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+JWT_SECRET_KEY=your_jwt_secret
 
-### 📚 Educational Quality
-- **Curated Content**: Uses verified ML concept database as primary source
-- **Progressive Learning**: Builds knowledge from simple to complex concepts
-- **Real-World Applications**: Connects concepts to practical, inspiring examples
-- **Encouraging Language**: Builds confidence and promotes continued learning
+# Milvus/Zilliz Cloud
+MILVUS_URI=your_milvus_uri
+MILVUS_TOKEN=your_milvus_token
+MILVUS_COLLECTION=ml_concepts
 
-### 👶 Child Safety Features
-- **Pre-Screening**: Advanced keyword and pattern matching for question filtering
-- **Age Detection**: Automatic age calculation and appropriate content adjustment
-- **Safe Examples**: Uses toys, games, and familiar objects for young learners
-- **Positive Focus**: Emphasizes beneficial uses of AI technology
+# Neo4j Aura
+NEO4J_URI=your_neo4j_uri
+NEO4J_USERNAME=your_username
+NEO4J_PASSWORD=your_password
 
-### 🧪 Quality Assurance
-- **Automated Testing**: Comprehensive test suites for safety and educational quality
-- **Response Validation**: Ensures all responses meet educational standards
-- **Continuous Monitoring**: Regular verification of content appropriateness
+# SSL Certificates (for corporate environments)
+SSL_CERT_FILE=/path/to/corp_root_ca.pem
+REQUESTS_CA_BUNDLE=/path/to/corp_root_ca.pem
+```
 
+4. **Setup database**
+```bash
+# Run Supabase schema
+# Copy database_schema.sql content to Supabase SQL Editor
 
+# Populate ML concepts
+python populate_ml_concepts.py
 
-## Database Schema
+# Setup Neo4j schema (automatic with scraper)
+```
 
-The application uses Supabase with the following main tables:
+5. **Run the application**
+```bash
+python index.py
+```
 
-- **users**: User profiles and study preferences
-- **study_sessions**: Learning session tracking
-- **chat_history**: Conversation history
-- **learning_goals**: User-defined learning objectives
-- **study_materials**: User's study resources
-- **progress_tracking**: Learning progress monitoring
+## 📊 Current System Status
 
-## API Endpoints
+### 🧠 **RAG System (Milvus)**
+- ✅ **Connected**: Zilliz Cloud integration
+- ✅ **Populated**: ML concepts with embeddings
+- ✅ **Functional**: Age-appropriate responses
+- ✅ **Guardrails**: Content filtering active
 
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/validate` - Token validation
-- `GET /api/auth/profile` - User profile
-- `POST /api/auth/logout` - User logout
+### 🎥 **YouTube Knowledge Graph (Neo4j)**
+- ✅ **Connected**: Neo4j Aura Cloud
+- ✅ **Channels**: 3 working channels
+- ✅ **Videos**: 91 educational videos
+- ✅ **Keywords**: 640 ML/AI keywords
+- ✅ **Relationships**: 1,373 keyword connections
 
-### Chat & Learning
-- `POST /api/chat` - AI chat with RAG (requires authentication)
-- `GET /api/reranking-config` - Reranking configuration
-- `POST /api/add-document` - Add documents to RAG system
+#### **Working Channels:**
+1. **3Blue1Brown** (30 videos) - Mathematics & Computer Science
+2. **StatQuest** (30 videos) - Statistics & Machine Learning  
+3. **Two Minute Papers** (30 videos) - AI Research Papers
 
-### Pages
-- `GET /login` - Login page
-- `GET /register` - Registration page
-- `GET /dashboard` - Main dashboard (requires authentication)
+### 🔐 **Authentication System**
+- ✅ **Supabase**: PostgreSQL backend
+- ✅ **JWT**: Secure token management
+- ✅ **User Profiles**: ML/AI focused registration
+- ✅ **Security**: Password hashing, RLS policies
 
-## Security Features
+## 🛠️ Utility Scripts
 
-- **Password Hashing**: Bcrypt-based password encryption
-- **JWT Tokens**: Secure session management
-- **Row Level Security**: Database-level access control
-- **Input Validation**: Comprehensive form validation
-- **CORS Protection**: Cross-origin request security
-- **Environment Variables**: Secure configuration management
+### **Core Application**
+- `index.py` - Main FastAPI application
+- `rag_system.py` - RAG system with Milvus
+- `auth_service.py` - Authentication logic
+- `auth_models.py` - User data models
 
-## Technologies Used
+### **YouTube Scraping**
+- `youtube_channel_scraper.py` - Multi-channel video scraper
+- `youtube_single_scraper.py` - Single video scraper
+- `run_scraper.sh` - Bash wrapper with SSL certificates
 
-### Backend
-- **FastAPI**: Modern Python web framework
-- **Supabase**: PostgreSQL database with real-time features
-- **OpenAI**: AI language model integration
-- **JWT**: Secure authentication tokens
-- **Pydantic**: Data validation and serialization
+### **RAG Management**
+- `populate_ml_concepts.py` - Populate Milvus with ML concepts
+- `check_ml_concepts.py` - Check Milvus collection status
+- `cleanup_ml_concepts.py` - Clean up Milvus collection
 
-### Frontend
-- **HTML5/CSS3**: Modern, responsive design
-- **JavaScript**: Interactive user interface
-- **Font Awesome**: Icon library
-- **Jinja2**: Template engine
+### **Testing & Debugging**
+- `test_rag_retrieval.py` - Test RAG system responses
+- `test_guardrails.py` - Test content filtering
+- `test_conversation_fix.py` - Test conversation flow
+- `neo4j_basic_read.py` - Read Neo4j knowledge graph
 
-### DevOps
-- **Vercel**: Deployment platform
-- **uv**: Fast Python package manager
-- **Docker**: Containerization (optional)
+## 🔧 Usage Examples
 
-## Project Structure
+### **Scrape YouTube Channels**
+```bash
+# Scrape all working channels (30 videos each)
+python youtube_channel_scraper.py
+
+# Scrape single video
+python youtube_single_scraper.py "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+### **Check System Status**
+```bash
+# Check Milvus RAG system
+python check_ml_concepts.py
+
+# Check Neo4j knowledge graph
+python neo4j_basic_read.py
+
+# Test RAG responses
+python test_rag_retrieval.py
+```
+
+### **Populate ML Concepts**
+```bash
+# Initial population
+python populate_ml_concepts.py
+
+# Force repopulate
+python populate_ml_concepts.py --force
+```
+
+## 🏗️ Project Structure
 
 ```
 rag-vercel-example/
 ├── index.py                 # Main FastAPI application
-├── auth_models.py          # Authentication data models
-├── auth_service.py         # Authentication business logic
+├── rag_system.py           # RAG system with Milvus
+├── youtube_channel_scraper.py  # Multi-channel YouTube scraper
+├── youtube_single_scraper.py   # Single video scraper
+├── auth_service.py         # Authentication service
+├── auth_models.py          # User data models
 ├── requirements.txt        # Python dependencies
-├── database_schema.sql     # Database schema
-├── env.example             # Environment variables template
+├── .env                    # Environment variables (not in git)
 ├── templates/              # HTML templates
-│   ├── login.html          # Login page
-│   ├── register.html       # Registration page
-│   └── index.html          # Main dashboard
-├── static/                 # Static assets
-│   ├── css/
-│   │   ├── auth.css        # Authentication styles
-│   │   └── style.css       # Main styles
-│   └── js/
-│       ├── auth.js         # Authentication logic
-│       └── chat.js         # Chat functionality
-└── README.md              # Project documentation
+├── static/                 # CSS, JS, assets
+├── README.md              # This file
+└── DEVELOPMENT_NOTES.md   # Development progress log
 ```
 
-## Contributing
+## 🔒 Security Features
+
+- **Environment variables** for all sensitive data
+- **JWT tokens** for secure authentication
+- **Password hashing** with bcrypt
+- **Row-level security** in Supabase
+- **SSL certificate** handling for corporate environments
+
+## 🚀 Deployment
+
+### **Vercel Deployment**
+- Configured with `vercel.json`
+- Environment variables in Vercel dashboard
+- Automatic deployments from main branch
+
+### **Local Development**
+- FastAPI development server on port 8000
+- Hot reload for development
+- Virtual environment isolation
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
+4. Test thoroughly
 5. Submit a pull request
 
-## License
+## 📚 Technologies Used
 
-This project is created as part of an AI bootcamp capstone project.
+- **Backend**: FastAPI, Python
+- **Database**: Supabase (PostgreSQL), Neo4j Aura
+- **Vector DB**: Milvus/Zilliz Cloud
+- **AI**: OpenAI GPT models
+- **Frontend**: HTML, CSS, JavaScript
+- **Authentication**: JWT, Supabase Auth
+- **YouTube Scraping**: yt-dlp, youtube-transcript-api
 
-## Support
+## 🆘 Support
 
-For support and questions, please refer to the project documentation or create an issue in the repository. 
+- **Documentation**: Check `DEVELOPMENT_NOTES.md` for recent updates
+- **Troubleshooting**: See `TROUBLESHOOTING.md` for common issues
+- **Issues**: Create GitHub issues for bugs or feature requests
+
+## 📈 Roadmap
+
+- [ ] **ML Concept Relationships** in Neo4j
+- [ ] **Video Recommendation System** using keyword similarity
+- [ ] **Learning Paths** and prerequisites
+- [ ] **More YouTube Channels** (Lex Fridman, DeepMind, etc.)
+- [ ] **Advanced Analytics** and progress tracking
+- [ ] **Mobile App** development
+
+---
+
+**Last Updated**: August 13, 2025  
+**Status**: ✅ **YouTube Knowledge Graph Active** | ✅ **RAG System Operational** | ✅ **Authentication Working** 

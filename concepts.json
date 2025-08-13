@@ -1,0 +1,51 @@
+[
+    { "slug": "ml-foundations", "title": "Machine Learning Foundations" },
+    { "slug": "ai-vs-ml-vs-dl", "title": "AI vs ML vs Deep Learning" },
+    { "slug": "types-of-learning", "title": "Types of Learning: Supervised, Unsupervised, Reinforcement" },
+    { "slug": "training-vs-inference", "title": "Training vs Inference" },
+    { "slug": "features-and-labels", "title": "Features and Labels" },
+    { "slug": "bias-vs-variance", "title": "Bias vs Variance" },
+    { "slug": "overfitting-vs-underfitting", "title": "Overfitting vs Underfitting" },
+    { "slug": "train-test-split", "title": "Train-Test Split" },
+    { "slug": "cross-validation", "title": "Cross Validation" },
+  
+    { "slug": "linear-regression", "title": "Linear Regression" },
+    { "slug": "logistic-regression", "title": "Logistic Regression" },
+    { "slug": "decision-trees", "title": "Decision Trees" },
+    { "slug": "random-forest", "title": "Random Forest" },
+    { "slug": "support-vector-machines", "title": "Support Vector Machines" },
+    { "slug": "knn", "title": "K-Nearest Neighbors" },
+    { "slug": "naive-bayes", "title": "Naive Bayes" },
+    { "slug": "gradient-boosting", "title": "Gradient Boosting" },
+  
+    { "slug": "clustering", "title": "Clustering Basics" },
+    { "slug": "k-means", "title": "K-Means Clustering" },
+    { "slug": "hierarchical-clustering", "title": "Hierarchical Clustering" },
+    { "slug": "pca", "title": "Principal Component Analysis" },
+    { "slug": "dimensionality-reduction", "title": "Dimensionality Reduction" },
+  
+    { "slug": "evaluation-metrics", "title": "Evaluation Metrics" },
+    { "slug": "accuracy-vs-precision-vs-recall", "title": "Accuracy vs Precision vs Recall" },
+    { "slug": "f1-score", "title": "F1 Score" },
+    { "slug": "roc-auc", "title": "ROC and AUC" },
+    { "slug": "confusion-matrix", "title": "Confusion Matrix" },
+  
+    { "slug": "eda", "title": "Exploratory Data Analysis (EDA)" },
+    { "slug": "data-cleaning", "title": "Data Cleaning" },
+    { "slug": "feature-engineering", "title": "Feature Engineering" },
+    { "slug": "feature-scaling", "title": "Feature Scaling" },
+    { "slug": "encoding-categorical", "title": "Encoding Categorical Data" },
+  
+    { "slug": "gradient-descent", "title": "Gradient Descent" },
+    { "slug": "activation-functions", "title": "Activation Functions" },
+    { "slug": "cnn-basics", "title": "Convolutional Neural Networks (CNN)" },
+    { "slug": "rnn-lstm", "title": "Recurrent Neural Networks (RNN) & LSTM" },
+    { "slug": "transformers", "title": "Transformers" },
+  
+    { "slug": "llm-basics", "title": "Large Language Models (LLMs)" },
+    { "slug": "prompt-engineering", "title": "Prompt Engineering" },
+    { "slug": "generative-ai", "title": "Generative AI Basics" },
+    { "slug": "model-deployment", "title": "Model Deployment" },
+    { "slug": "ml-ethics", "title": "ML Ethics & Interpretability" }
+  ]
+  
