@@ -40,10 +40,18 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set
+from dotenv import load_dotenv
 
 # OpenAI v1 client (pip install openai>=1.30.0)
 from openai import OpenAI
-from openai._exceptions import RateLimitError, APIError, APIConnectionError, Timeout
+from openai import RateLimitError, APIError, APIConnectionError
+
+# Load environment variables and configure SSL
+load_dotenv()
+
+# Fix SSL certificates for Python (use system certificates)
+os.environ['SSL_CERT_FILE'] = '/etc/ssl/cert.pem'
+os.environ['REQUESTS_CA_BUNDLE'] = '/etc/ssl/cert.pem'
 
 # -------------------------------
 # Config
@@ -178,7 +186,7 @@ def call_llm(client: OpenAI, model: str, system: str, user: str, temperature: fl
             )
             text = resp.choices[0].message.content.strip()
             return text
-        except (RateLimitError, Timeout, APIError, APIConnectionError) as e:
+        except (RateLimitError, APIError, APIConnectionError) as e:
             if attempt >= 5:
                 raise
             backoff_sleep(attempt)

@@ -8,7 +8,7 @@
     { "slug": "overfitting-vs-underfitting", "title": "Overfitting vs Underfitting" },
     { "slug": "train-test-split", "title": "Train-Test Split" },
     { "slug": "cross-validation", "title": "Cross Validation" },
-  
+
     { "slug": "linear-regression", "title": "Linear Regression" },
     { "slug": "logistic-regression", "title": "Logistic Regression" },
     { "slug": "decision-trees", "title": "Decision Trees" },
@@ -17,35 +17,89 @@
     { "slug": "knn", "title": "K-Nearest Neighbors" },
     { "slug": "naive-bayes", "title": "Naive Bayes" },
     { "slug": "gradient-boosting", "title": "Gradient Boosting" },
-  
+
     { "slug": "clustering", "title": "Clustering Basics" },
     { "slug": "k-means", "title": "K-Means Clustering" },
     { "slug": "hierarchical-clustering", "title": "Hierarchical Clustering" },
     { "slug": "pca", "title": "Principal Component Analysis" },
     { "slug": "dimensionality-reduction", "title": "Dimensionality Reduction" },
-  
+
     { "slug": "evaluation-metrics", "title": "Evaluation Metrics" },
     { "slug": "accuracy-vs-precision-vs-recall", "title": "Accuracy vs Precision vs Recall" },
     { "slug": "f1-score", "title": "F1 Score" },
     { "slug": "roc-auc", "title": "ROC and AUC" },
     { "slug": "confusion-matrix", "title": "Confusion Matrix" },
-  
+
     { "slug": "eda", "title": "Exploratory Data Analysis (EDA)" },
     { "slug": "data-cleaning", "title": "Data Cleaning" },
     { "slug": "feature-engineering", "title": "Feature Engineering" },
     { "slug": "feature-scaling", "title": "Feature Scaling" },
     { "slug": "encoding-categorical", "title": "Encoding Categorical Data" },
-  
+
     { "slug": "gradient-descent", "title": "Gradient Descent" },
     { "slug": "activation-functions", "title": "Activation Functions" },
     { "slug": "cnn-basics", "title": "Convolutional Neural Networks (CNN)" },
     { "slug": "rnn-lstm", "title": "Recurrent Neural Networks (RNN) & LSTM" },
     { "slug": "transformers", "title": "Transformers" },
-  
+
     { "slug": "llm-basics", "title": "Large Language Models (LLMs)" },
     { "slug": "prompt-engineering", "title": "Prompt Engineering" },
     { "slug": "generative-ai", "title": "Generative AI Basics" },
     { "slug": "model-deployment", "title": "Model Deployment" },
-    { "slug": "ml-ethics", "title": "ML Ethics & Interpretability" }
-  ]
-  
+    { "slug": "ml-ethics", "title": "ML Ethics & Interpretability" },
+
+
+    { "slug": "ensemble-methods", "title": "Ensemble Methods Overview" },
+    { "slug": "bagging-vs-boosting", "title": "Bagging vs Boosting" },
+    { "slug": "xgboost", "title": "Extreme Gradient Boosting (XGBoost)" },
+    { "slug": "lightgbm", "title": "LightGBM" },
+    { "slug": "catboost", "title": "CatBoost" },
+    { "slug": "gbm-vs-rf", "title": "Gradient Boosting vs Random Forest" },
+
+    { "slug": "anomaly-detection", "title": "Anomaly Detection Techniques" },
+    { "slug": "time-series-basics", "title": "Time Series Forecasting Basics" },
+    { "slug": "arima", "title": "ARIMA Models" },
+    { "slug": "prophet", "title": "Facebook Prophet for Forecasting" },
+
+    { "slug": "svd", "title": "Singular Value Decomposition (SVD)" },
+    { "slug": "t-sne", "title": "t-SNE Visualization" },
+    { "slug": "umap", "title": "UMAP Dimensionality Reduction" },
+
+    { "slug": "word2vec", "title": "Word2Vec Embeddings" },
+    { "slug": "doc2vec", "title": "Doc2Vec Embeddings" },
+    { "slug": "sentence-transformers", "title": "Sentence Transformers" },
+
+    { "slug": "attention-mechanism", "title": "Attention Mechanism Explained" },
+    { "slug": "multi-head-attention", "title": "Multi-Head Attention" },
+    { "slug": "positional-encoding", "title": "Positional Encoding in Transformers" },
+
+    { "slug": "gpt-vs-bert", "title": "GPT vs BERT Architectures" },
+    { "slug": "finetuning-llms", "title": "Fine-Tuning Large Language Models" },
+    { "slug": "rlhf", "title": "Reinforcement Learning from Human Feedback (RLHF)" },
+    { "slug": "rag", "title": "Retrieval-Augmented Generation (RAG)" },
+    { "slug": "embedding-models", "title": "Overview of Embedding Models" },
+
+    { "slug": "explainable-ai", "title": "Explainable AI (XAI)" },
+    { "slug": "shap-values", "title": "SHAP Values" },
+    { "slug": "lime", "title": "LIME for Model Interpretability" },
+
+    { "slug": "ml-pipelines", "title": "ML Pipelines & Workflow Automation" },
+    { "slug": "mlops", "title": "MLOps Best Practices" },
+    { "slug": "feature-store", "title": "Feature Stores in ML" },
+    { "slug": "model-monitoring", "title": "Model Monitoring in Production" },
+
+    { "slug": "probability-basics", "title": "Probability Basics" },
+    { "slug": "bayes-theorem", "title": "Bayes Theorem" },
+    { "slug": "central-limit-theorem", "title": "Central Limit Theorem" },
+    { "slug": "hypothesis-testing", "title": "Hypothesis Testing" },
+    { "slug": "t-test", "title": "T-Test" },
+    { "slug": "anova", "title": "ANOVA" },
+    { "slug": "chi-square", "title": "Chi-Square Test" },
+    { "slug": "correlation-vs-causation", "title": "Correlation vs Causation" },
+    { "slug": "confidence-interval", "title": "Confidence Intervals" },
+    { "slug": "p-value", "title": "P-Value Explained" },
+    { "slug": "effect-size", "title": "Effect Size in Statistics" }
+
+
+        
+]

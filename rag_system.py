@@ -9,7 +9,6 @@ import openai
 from typing import List, Dict, Any, Optional
 from pymilvus import connections, Collection, FieldSchema, CollectionSchema, DataType, utility
 import numpy as np
-from sentence_transformers import SentenceTransformer
 from ml_concepts_data import ML_CONCEPTS_DATABASE
 from dotenv import load_dotenv
 
@@ -18,40 +17,118 @@ load_dotenv()
 
 class RAGSystem:
     def __init__(self):
-        """Initialize the RAG system with Milvus and OpenAI"""
+        """Initialize RAG system with Milvus and OpenAI"""
+        # Load environment variables
+        load_dotenv()
+        
+        # Configure SSL certificates for corporate environment
+        self._configure_ssl_certificates()
+        
+        # Initialize OpenAI client
         self.openai_client = None
-        self.milvus_connection = None
+        self._init_openai_client()
+        
+        # Initialize Milvus connection
         self.collection = None
-        self.sentence_transformer = None
         self.collection_name = "ml_concepts"
-        self.dimension = 384  # sentence-transformers/all-MiniLM-L6-v2 dimension
+        self.dimension = 1536  # OpenAI text-embedding-3-small dimension
         
         # Initialize components
-        self._init_openai()
-        self._init_sentence_transformer()  # Initialize before Milvus to avoid population issues
         self._init_milvus()
-        
-    def _init_openai(self):
-        """Initialize OpenAI client"""
+        self._init_sentence_transformer()
+    
+    def _configure_ssl_certificates(self):
+        """Configure SSL certificates for corporate environment"""
+        try:
+            # Check if SSL certificate environment variables are set
+            ssl_cert_file = os.getenv('SSL_CERT_FILE')
+            requests_ca_bundle = os.getenv('REQUESTS_CA_BUNDLE')
+            
+            if ssl_cert_file and requests_ca_bundle:
+                print(f"🔒 SSL certificates configured: {ssl_cert_file}")
+                # Set environment variables for httpx/httpcore (used by OpenAI)
+                os.environ['SSL_CERT_FILE'] = ssl_cert_file
+                os.environ['REQUESTS_CA_BUNDLE'] = requests_ca_bundle
+                os.environ['CURL_CA_BUNDLE'] = ssl_cert_file
+            else:
+                print("⚠️ SSL certificates not configured - OpenAI may fail in corporate environments")
+                
+        except Exception as e:
+            print(f"⚠️ SSL configuration warning: {e}")
+    
+    def _init_openai_client(self):
+        """Initialize OpenAI client with SSL configuration"""
         try:
             api_key = os.getenv('OPENAI_API_KEY')
             if not api_key:
-                print("⚠️ OpenAI API key not found in environment variables")
+                print("❌ OPENAI_API_KEY not found in environment")
                 return
             
+            # Create OpenAI client with basic configuration
             self.openai_client = openai.OpenAI(api_key=api_key)
+            
             print("✅ OpenAI client initialized successfully")
+            
         except Exception as e:
-            print(f"❌ Error initializing OpenAI: {e}")
+            print(f"❌ Error initializing OpenAI client: {e}")
+            self.openai_client = None
     
     def _init_sentence_transformer(self):
-        """Initialize sentence transformer for embeddings"""
+        """Initialize OpenAI embeddings instead of sentence transformer"""
         try:
-            # Use a lightweight model that works well for concept similarity
-            self.sentence_transformer = SentenceTransformer('all-MiniLM-L6-v2')
-            print("✅ Sentence transformer initialized successfully")
+            # Use OpenAI embeddings instead of local sentence transformer
+            if not self.openai_client:
+                print("❌ OpenAI client not initialized")
+                return
+            
+            # Test OpenAI embeddings with a simple call
+            test_response = self.openai_client.embeddings.create(
+                model="text-embedding-3-small",
+                input="test"
+            )
+            
+            self.sentence_transformer = "openai"  # Mark as using OpenAI
+            print("✅ OpenAI embeddings initialized successfully")
+            
         except Exception as e:
-            print(f"❌ Error initializing sentence transformer: {e}")
+            print(f"❌ Error initializing OpenAI embeddings: {e}")
+            print("💡 Check your OPENAI_API_KEY and ensure it's valid")
+    
+    def _generate_embeddings_openai(self, texts):
+        """Generate embeddings using OpenAI API"""
+        try:
+            if not self.openai_client:
+                print("❌ OpenAI client not available")
+                return None
+            
+            print(f"🔄 Generating {len(texts)} embeddings using OpenAI...")
+            
+            # Process in batches to avoid rate limits
+            batch_size = 100
+            all_embeddings = []
+            
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i:i + batch_size]
+                print(f"📦 Processing batch {i//batch_size + 1}/{(len(texts) + batch_size - 1)//batch_size}")
+                
+                response = self.openai_client.embeddings.create(
+                    model="text-embedding-3-small",
+                    input=batch
+                )
+                
+                batch_embeddings = [data.embedding for data in response.data]
+                all_embeddings.extend(batch_embeddings)
+                
+                # Small delay to be respectful to API
+                import time
+                time.sleep(0.1)
+            
+            print(f"✅ Generated {len(all_embeddings)} embeddings using OpenAI")
+            return all_embeddings
+            
+        except Exception as e:
+            print(f"❌ Error generating OpenAI embeddings: {e}")
+            return None
     
     def _init_milvus(self):
         """Initialize Milvus connection and collection"""
@@ -166,8 +243,25 @@ class RAGSystem:
             keywords_list = []
             embeddings = []
             
-            # Generate embeddings for each concept
-            total_concepts = len(ML_CONCEPTS_DATABASE)
+            # Generate embeddings for all concepts
+            texts = []
+            for concept in ML_CONCEPTS_DATABASE:
+                # Combine concept information for embedding
+                concept_text = f"{concept['concept']} {concept['definition']} {concept['child_analogy']} {' '.join(concept['keywords'])}"
+                texts.append(concept_text)
+            
+            # Generate embeddings using OpenAI
+            if self.sentence_transformer == "openai":
+                embeddings = self._generate_embeddings_openai(texts)
+            else:
+                print("❌ OpenAI embeddings not available")
+                return
+            
+            if not embeddings:
+                print("❌ Failed to generate embeddings")
+                return
+            
+            # Populate lists with data
             for i, concept_data in enumerate(ML_CONCEPTS_DATABASE, 1):
                 # Combine text for embedding (concept + definition + analogy for better semantic search)
                 combined_text = f"{concept_data['concept']} {concept_data['definition']} {concept_data['child_analogy']}"
@@ -185,8 +279,8 @@ class RAGSystem:
                 embeddings.append(embedding.tolist())
                 
                 # Progress indicator
-                if i % 5 == 0 or i == total_concepts:
-                    print(f"📊 Progress: {i}/{total_concepts} concepts processed")
+                if i % 5 == 0 or i == len(ML_CONCEPTS_DATABASE):
+                    print(f"📊 Progress: {i}/{len(ML_CONCEPTS_DATABASE)} concepts processed")
             
             # Insert data into collection
             data = [
@@ -284,18 +378,128 @@ class RAGSystem:
         except Exception as e:
             print(f"❌ Error populating collection: {e}")
     
-    def force_repopulate(self):
-        """Force repopulation of the collection (for admin use)"""
+    def _populate_collection_with_custom(self, custom_concepts):
+        """Populate collection with custom concept data"""
         try:
-            if self.collection and utility.has_collection(self.collection_name):
-                # Drop existing collection
+            print(f"📚 Populating with {len(custom_concepts)} custom concepts...")
+            
+            # Generate embeddings for all concepts
+            texts = []
+            for concept in custom_concepts:
+                # Combine concept information for embedding
+                concept_text = f"{concept['concept']} {concept['definition']} {concept['child_analogy']} {' '.join(concept['keywords'])}"
+                texts.append(concept_text)
+            
+            # Generate embeddings using OpenAI
+            if self.openai_client:
+                embeddings = self._generate_embeddings_openai(texts)
+            else:
+                print("❌ OpenAI client not available")
+                return
+            
+            if not embeddings:
+                print("❌ Failed to generate embeddings")
+                return
+            
+            # Prepare data for insertion
+            data = [
+                list(range(len(custom_concepts))),  # IDs
+                [concept['concept'] for concept in custom_concepts],  # Concepts
+                [concept['category'] for concept in custom_concepts],  # Categories
+                [concept['definition'] for concept in custom_concepts],  # Definitions
+                [concept['child_analogy'] for concept in custom_concepts],  # Child analogies
+                [concept['real_world_example'] for concept in custom_concepts],  # Real world examples
+                [concept['difficulty'] for concept in custom_concepts],  # Difficulties
+                [concept['keywords'] for concept in custom_concepts],  # Keywords
+                embeddings  # Embeddings
+            ]
+            
+            print("💾 Inserting custom data into Milvus collection...")
+            insert_result = self.collection.insert(data)
+            print(f"📊 Insert result: {len(insert_result.primary_keys)} records inserted")
+            
+            # Force flush and build index
+            print("💾 Flushing data to storage...")
+            self.collection.flush()
+            
+            import time
+            time.sleep(3)
+            
+            # Build index
+            print("🔍 Building search index...")
+            index_params = {
+                "metric_type": "COSINE",
+                "index_type": "IVF_FLAT",
+                "params": {"nlist": 128}
+            }
+            
+            try:
+                indexes = self.collection.indexes
+                if not indexes:
+                    self.collection.create_index(
+                        field_name="embedding",
+                        index_params=index_params
+                    )
+                    print("✅ Search index created")
+                
+                self.collection.load()
+                time.sleep(3)
+                
+                final_count = self.collection.num_entities
+                print(f"✅ Successfully loaded {final_count} custom concepts")
+                
+            except Exception as index_error:
+                print(f"⚠️ Index creation warning: {index_error}")
+                try:
+                    self.collection.load()
+                    print("✅ Collection loaded without index")
+                except Exception as load_error:
+                    print(f"❌ Failed to load collection: {load_error}")
+                    raise
+            
+        except Exception as e:
+            print(f"❌ Error populating with custom concepts: {e}")
+            raise
+    
+    def force_repopulate(self, custom_concepts=None):
+        """Force repopulate the collection with fresh data"""
+        try:
+            print("🔄 Force repopulating collection...")
+            
+            # Check if OpenAI is working
+            if not self.openai_client:
+                print("❌ OpenAI client not available - cannot generate new embeddings")
+                print("💡 Using existing concepts in collection instead")
+                return False
+            
+            # Test OpenAI connection
+            try:
+                test_response = self.openai_client.embeddings.create(
+                    model="text-embedding-3-small",
+                    input="test"
+                )
+                print("✅ OpenAI connection test successful")
+            except Exception as e:
+                print(f"❌ OpenAI connection failed: {e}")
+                print("💡 Cannot generate new embeddings - using existing concepts")
+                return False
+            
+            # Drop existing collection
+            if utility.has_collection(self.collection_name):
                 utility.drop_collection(self.collection_name)
                 print(f"🗑️ Dropped existing collection: {self.collection_name}")
             
-            # Recreate and populate
+            # Create new collection
             print(f"🔄 Creating new collection: {self.collection_name}")
             self._create_collection_schema()
-            self._populate_collection()
+            
+            # Use custom concepts if provided, otherwise use default
+            if custom_concepts:
+                self._populate_collection_with_custom(custom_concepts)
+            else:
+                self._populate_collection()
+            
+            return True
             
         except Exception as e:
             print(f"❌ Error in force repopulation: {e}")
@@ -372,34 +576,36 @@ class RAGSystem:
         Returns:
             List of relevant concept dictionaries
         """
-        if not self.sentence_transformer or not self.collection:
-            print("❌ RAG system not properly initialized")
+        if self.sentence_transformer != "openai" or not self.collection:
+            print("❌ RAG system not properly initialized with OpenAI embeddings")
             return []
         
         try:
-            # Generate embedding for the query
-            query_embedding = self.sentence_transformer.encode(query, normalize_embeddings=True)
+            # Generate embedding for the query using OpenAI
+            query_embedding = self._generate_embeddings_openai([query])
+            if not query_embedding:
+                print("❌ Failed to generate query embedding")
+                return []
             
-            # Search parameters
+            # Search for similar concepts
             search_params = {
                 "metric_type": "COSINE",
                 "params": {"nprobe": 10}
             }
             
-            # Perform similarity search
             results = self.collection.search(
-                data=[query_embedding.tolist()],
+                data=[query_embedding[0]],
                 anns_field="embedding",
                 param=search_params,
                 limit=top_k,
                 output_fields=["concept", "category", "definition", "child_analogy", "real_world_example", "difficulty", "keywords"]
             )
             
-            # Format results
-            formatted_results = []
+            # Process results
+            concepts = []
             for hits in results:
                 for hit in hits:
-                    concept_data = {
+                    concept_info = {
                         "concept": hit.entity.get("concept"),
                         "category": hit.entity.get("category"),
                         "definition": hit.entity.get("definition"),
@@ -409,9 +615,9 @@ class RAGSystem:
                         "keywords": hit.entity.get("keywords"),
                         "similarity_score": hit.score
                     }
-                    formatted_results.append(concept_data)
+                    concepts.append(concept_info)
             
-            return formatted_results
+            return concepts
             
         except Exception as e:
             print(f"❌ Error searching concepts: {e}")

@@ -15,10 +15,12 @@ An intelligent AI/ML educational platform that combines:
 ## ✨ Key Features
 
 ### 🧠 **AI/ML Tutoring System**
-- **RAG-powered responses** using Milvus vector database
+- **RAG-powered responses** using Milvus vector database with 513 rich educational chunks
+- **Child-friendly content** including definitions, analogies, examples, mistakes, quizzes, and related concepts
 - **Age-appropriate explanations** for different learning levels
 - **Content guardrails** ensuring ML/AI focus only
 - **Conversation continuity** with context awareness
+- **Production-ready dataset** generated using OpenAI with comprehensive ML/AI coverage
 
 ### 🎥 **YouTube Knowledge Graph**
 - **Multi-channel scraping** of high-profile AI/ML channels
@@ -109,7 +111,10 @@ python index.py
 
 ### 🧠 **RAG System (Milvus)**
 - ✅ **Connected**: Zilliz Cloud integration
-- ✅ **Populated**: ML concepts with embeddings
+- ✅ **Production Dataset**: 513 rich educational chunks in `rich_ml_education` collection
+- ✅ **Content Types**: Definitions, analogies, examples, mistakes, quizzes, related concepts
+- ✅ **Embeddings**: OpenAI text-embedding-3-small (1536 dimensions)
+- ✅ **Coverage**: 42 comprehensive ML/AI concepts
 - ✅ **Functional**: Age-appropriate responses
 - ✅ **Guardrails**: Content filtering active
 
@@ -145,9 +150,16 @@ python index.py
 - `run_scraper.sh` - Bash wrapper with SSL certificates
 
 ### **RAG Management**
-- `populate_ml_concepts.py` - Populate Milvus with ML concepts
+- `populate_ml_concepts.py` - Populate Milvus with basic ML concepts (legacy)
 - `check_ml_concepts.py` - Check Milvus collection status
 - `cleanup_ml_concepts.py` - Clean up Milvus collection
+
+### **Rich Dataset Generation**
+- `generate_dataset.py` - Generate rich educational content using OpenAI
+- `create_rich_milvus_collection.py` - Create new collection for rich content
+- `load_rich_concepts_to_milvus_new.py` - Load rich content to production collection
+- `concepts.json` - Curated list of 42 ML concepts
+- `ml_analogies.jsonl` - Generated rich educational dataset (513 chunks)
 
 ### **Testing & Debugging**
 - `test_rag_retrieval.py` - Test RAG system responses
@@ -156,6 +168,18 @@ python index.py
 - `neo4j_basic_read.py` - Read Neo4j knowledge graph
 
 ## 🔧 Usage Examples
+
+### **Generate Rich Educational Dataset**
+```bash
+# Generate rich content for all 42 ML concepts (one-time setup)
+python generate_dataset.py --concepts concepts.json --out ml_analogies.jsonl --variants 3
+
+# Create new Milvus collection for rich content
+python create_rich_milvus_collection.py
+
+# Load rich content to production collection
+python load_rich_concepts_to_milvus_new.py
+```
 
 ### **Scrape YouTube Channels**
 ```bash
@@ -246,6 +270,27 @@ rag-vercel-example/
 ## 🆘 Support
 
 - **Documentation**: Check `DEVELOPMENT_NOTES.md` for recent updates
+## 🔧 SSL Certificate Configuration
+
+### **Important Discovery: Python SSL Certificate Path Issue**
+
+If you encounter SSL certificate errors with OpenAI API on macOS:
+
+```bash
+# Error: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed
+# Root cause: Python looking for certificates in wrong location
+```
+
+**Solution:**
+```bash
+export SSL_CERT_FILE=/etc/ssl/cert.pem
+export REQUESTS_CA_BUNDLE=/etc/ssl/cert.pem
+```
+
+This is automatically configured in our scripts, but may be needed for other Python SSL issues.
+
+## 🚨 Troubleshooting
+
 - **Troubleshooting**: See `TROUBLESHOOTING.md` for common issues
 - **Issues**: Create GitHub issues for bugs or feature requests
 
