@@ -417,19 +417,127 @@ class RAGSystem:
             print(f"❌ Error searching concepts: {e}")
             return []
     
-    def generate_response(self, user_question: str, user_profile: Dict[str, Any] = None) -> str:
+    def is_ml_ai_related_question(self, question: str) -> bool:
+        """
+        Pre-screen questions to determine if they're ML/AI related
+        Returns True if question is appropriate for ML/AI tutor
+        """
+        # Convert question to lowercase for matching
+        question_lower = question.lower().strip()
+        
+        # CONVERSATION CONTINUITY - Allow common follow-up responses
+        conversation_continuations = [
+            'yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'continue', 'go ahead',
+            'tell me more', 'more', 'next', 'please', 'that sounds good',
+            'i want to learn', 'teach me', 'can you explain', 'show me',
+            'what about', 'how about', 'and then', 'what happens next',
+            'i don\'t understand', 'can you simplify', 'make it simpler',
+            'give me an example', 'example', 'for instance', 'like what',
+            'why', 'how', 'when', 'where', 'what'
+        ]
+        
+        # Check for conversation continuations first
+        for continuation in conversation_continuations:
+            if question_lower == continuation or question_lower.startswith(continuation + ' '):
+                return True
+        
+        # ML/AI related keywords and concepts
+        ml_ai_keywords = [
+            # Core ML/AI terms
+            'machine learning', 'ml', 'artificial intelligence', 'ai', 'deep learning',
+            'neural network', 'algorithm', 'model', 'data science', 'prediction',
+            'classification', 'regression', 'clustering', 'supervised', 'unsupervised',
+            'reinforcement learning', 'natural language processing', 'nlp', 'computer vision',
+            'feature', 'training', 'dataset', 'overfitting', 'accuracy', 'precision',
+            
+            # Technical terms
+            'gradient descent', 'backpropagation', 'embedding', 'vector', 'transformer',
+            'cnn', 'rnn', 'lstm', 'gpt', 'bert', 'attention', 'convolution',
+            'hyperparameter', 'optimization', 'loss function', 'activation',
+            
+            # Applications and tools
+            'chatgpt', 'generative ai', 'llm', 'large language model', 'tensorflow',
+            'pytorch', 'scikit-learn', 'pandas', 'numpy', 'jupyter', 'python for ml',
+            'data preprocessing', 'feature engineering', 'model deployment',
+            
+            # Concepts from our database
+            'neural', 'learning', 'training data', 'bias', 'variance', 'cross-validation',
+            'ensemble', 'random forest', 'support vector', 'decision tree', 'k-means',
+            'dimensionality reduction', 'pca', 'recommendation system', 'anomaly detection'
+        ]
+        
+        # Check for ML/AI keywords
+        for keyword in ml_ai_keywords:
+            if keyword in question_lower:
+                return True
+        
+        # Check for question patterns that might be ML/AI related
+        ml_question_patterns = [
+            'how does', 'what is', 'explain', 'learn', 'understand', 'teach me',
+            'difference between', 'types of', 'examples of', 'applications of',
+            'how to', 'why do', 'when to use', 'best practices', 'getting started'
+        ]
+        
+        # If question contains learning-related patterns and no obvious non-ML topics, check more carefully
+        contains_learning_pattern = any(pattern in question_lower for pattern in ml_question_patterns)
+        
+        # Topics that are definitely NOT ML/AI education
+        non_ml_topics = [
+            'weather', 'cooking', 'recipe', 'sports', 'politics', 'religion',
+            'medical', 'health', 'disease', 'symptom', 'legal', 'law', 'lawyer',
+            'financial', 'investment', 'stock', 'money', 'personal', 'relationship',
+            'dating', 'marriage', 'celebrity', 'gossip', 'news', 'current events',
+            'travel', 'vacation', 'restaurant', 'movie', 'music', 'entertainment'
+        ]
+        
+        # If contains non-ML topics, definitely not ML/AI related
+        for topic in non_ml_topics:
+            if topic in question_lower:
+                return False
+        
+        # If contains learning pattern but no clear ML keywords, be more permissive
+        # This catches questions like "how does learning work?" which could be about ML
+        if contains_learning_pattern:
+            return True
+        
+        # Short questions (1-3 words) are likely conversation continuations
+        # BUT only if they don't contain obvious non-ML topics
+        word_count = len(question_lower.split())
+        if word_count <= 3:
+            # Double-check that short questions aren't obviously non-ML
+            for topic in non_ml_topics:
+                if topic in question_lower:
+                    return False
+            return True
+        
+        # Default to False for safety
+        return False
+    
+    def generate_response(self, user_question: str, user_profile: Dict[str, Any] = None, conversation_history: List[Dict[str, str]] = None) -> str:
         """
         Generate a response using RAG: retrieve relevant concepts and generate answer
         
         Args:
             user_question: The user's question
-            user_profile: User's learning profile for personalization
+            user_profile: User's learning profile for personalization (includes user_age)
+            conversation_history: Previous messages for context
             
         Returns:
             Generated response string
         """
         if not self.openai_client:
             return "I'm sorry, I can't generate responses right now. The OpenAI connection isn't available."
+        
+        # Step 0: Pre-screen question for ML/AI relevance
+        if not self.is_ml_ai_related_question(user_question):
+            age_group = user_profile.get('age_group', 'unknown') if user_profile else 'unknown'
+            
+            if age_group == 'child':
+                return "Hi there! I'm your AI and Machine Learning tutor! 🤖 I can only help you learn about artificial intelligence and machine learning. These are super cool topics where we teach computers to be smart! What would you like to learn about AI or machine learning? Maybe how computers learn to recognize pictures or how they understand what we say?"
+            elif age_group == 'teenager':
+                return "Hey! I'm an AI/ML education tutor and I focus exclusively on teaching artificial intelligence and machine learning concepts. 🧠 I can't help with other topics, but I'd love to explore some fascinating AI concepts with you! Want to learn how recommendation algorithms work on social media, or how AI creates art and music?"
+            else:
+                return "I'm an AI/ML education tutor and can only help with Machine Learning and Artificial Intelligence topics. Let's explore some fascinating ML concepts instead! What would you like to learn about AI or machine learning? I can explain everything from basic algorithms to advanced deep learning techniques."
         
         try:
             # Step 1: Retrieve relevant concepts
@@ -438,7 +546,20 @@ class RAGSystem:
             if not relevant_concepts:
                 return "I couldn't find specific information about that topic. Could you try rephrasing your question or asking about ML concepts like supervised learning, neural networks, or data preprocessing?"
             
-            # Step 2: Build context from retrieved concepts
+            # Step 2: Build conversation context
+            conversation_context = ""
+            if conversation_history:
+                recent_messages = conversation_history[-4:]  # Last 4 messages for context
+                conversation_context = "\n\nRecent conversation:\n"
+                for msg in recent_messages:
+                    role = msg.get('role', 'unknown')
+                    content = msg.get('content', '')
+                    if role == 'user':
+                        conversation_context += f"Student: {content}\n"
+                    elif role == 'assistant':
+                        conversation_context += f"Tutor: {content[:200]}...\n"  # Truncate long responses
+            
+            # Step 3: Build context from retrieved concepts
             context = "Here are some relevant ML concepts that might help answer your question:\n\n"
             
             for i, concept in enumerate(relevant_concepts, 1):
@@ -447,35 +568,104 @@ class RAGSystem:
                 context += f"   Child-friendly explanation: {concept['child_analogy']}\n"
                 context += f"   Real example: {concept['real_world_example']}\n\n"
             
-            # Step 3: Personalize based on user profile
+            # Step 4: Personalize based on user profile
             user_context = ""
             if user_profile:
                 study_level = user_profile.get('study_level', 'beginner')
                 interests = user_profile.get('topics_of_interest', [])
                 learning_style = user_profile.get('preferred_learning_style', 'study only')
+                user_age = user_profile.get('user_age', None)
+                age_group = user_profile.get('age_group', 'unknown')
                 
                 user_context = f"""
 User Profile:
 - Study Level: {study_level}
+- User Age: {user_age} years old ({age_group})
 - Interests: {', '.join(interests) if interests else 'General ML'}
 - Learning Style: {learning_style}
 """
             
             # Step 4: Generate response using OpenAI
-            system_prompt = f"""You are a friendly AI tutor specializing in teaching Machine Learning and AI concepts to beginners, especially children and students. Your goal is to make complex concepts easy to understand using analogies, examples, and encouraging language.
+            age_guidance = ""
+            if user_profile and user_profile.get('user_age'):
+                age = user_profile.get('user_age')
+                age_group = user_profile.get('age_group', 'unknown')
+                
+                if age_group == "child":
+                    age_guidance = f"The user is {age} years old (child). Use very simple language, fun analogies with toys/games/animals, and keep explanations short and engaging."
+                elif age_group == "teenager":
+                    age_guidance = f"The user is {age} years old (teenager). Use relatable analogies with social media, gaming, sports, and school experiences. Be encouraging about their learning journey."
+                elif age_group == "young_adult":
+                    age_guidance = f"The user is {age} years old (young adult). Use practical analogies with college, career, technology they use daily. Focus on real-world applications."
+                else:
+                    age_guidance = f"The user is {age} years old ({age_group}). Adjust complexity and examples accordingly."
+            
+            system_prompt = f"""You are an AI ML Education Tutor - a specialized, safe, and focused educational assistant dedicated exclusively to teaching Machine Learning and Artificial Intelligence concepts to students of all ages.
 
 {user_context}
 
-Guidelines:
-1. Use the provided concept information to answer accurately
-2. Explain concepts using child-friendly analogies when possible
-3. Provide real-world examples that are relatable
-4. Be encouraging and supportive
-5. If the user seems confused, offer to explain things more simply
-6. Always end with asking if they'd like to know more about related topics
+{age_guidance}
+
+🎯 CORE MISSION: Make AI/ML education accessible, safe, and high-quality for everyone
+
+🔄 CONVERSATION CONTINUITY RULES:
+1. If user says "yes", "tell me more", "continue", etc., CONTINUE the educational topic from previous context
+2. If user asks simple follow-up questions (why, how, what, etc.), ELABORATE on the current topic
+3. NEVER give generic responses like "How can I help you today?" - always provide specific ML/AI educational content
+4. For conversation continuations, build upon the previous topic with deeper explanations or related concepts
+5. Maintain educational momentum - every response should teach something new about ML/AI
+
+🛡️ STRICT CONTENT GUARDRAILS:
+1. ONLY answer questions related to Machine Learning, Artificial Intelligence, Data Science, and related technical concepts
+2. For ANY non-ML/AI questions, respond with age-appropriate redirects to ML/AI topics
+3. Never provide information on: politics, religion, personal advice, medical diagnosis, legal advice, financial advice, or any non-educational content
+4. If asked about harmful uses of AI/ML, redirect to ethical applications and responsible AI practices
+5. Always maintain educational focus - even casual conversations should redirect to ML/AI learning
+
+📚 EDUCATIONAL EXCELLENCE STANDARDS:
+1. Use the provided ML concept database as your primary knowledge source
+2. Provide accurate, age-appropriate explanations using proven analogies
+3. Build knowledge progressively - start simple, add complexity gradually
+4. Use encouraging, positive language that builds confidence
+5. Include real-world applications that inspire interest
+6. Always fact-check against the provided concept definitions
+7. If uncertain about advanced topics, acknowledge limitations and focus on fundamentals
+
+🎨 AGE-APPROPRIATE TEACHING:
+- For children: Use simple analogies with toys, games, animals, everyday objects
+- For teenagers: Reference technology they use, games, social media, school projects
+- For adults: Focus on practical applications, career relevance, problem-solving
+
+🔄 ENGAGEMENT STRATEGIES:
+1. End responses with specific, curiosity-building questions about related ML/AI topics
+2. Suggest hands-on activities or thought experiments when appropriate
+3. Connect concepts to the user's stated interests when possible
+4. Celebrate learning progress and encourage exploration
+5. For follow-up questions, provide progressively deeper explanations
+
+⚖️ ETHICAL AI EMPHASIS:
+- Always mention responsible AI practices when relevant
+- Emphasize positive applications of ML/AI technology
+- Discuss fairness, bias prevention, and ethical considerations age-appropriately
+- Promote inclusive, beneficial uses of AI technology
+
+🎓 CONTEXT-AWARE RESPONSES:
+- For simple "yes/continue" responses: Elaborate on the most recent ML/AI topic discussed
+- For "why/how/what" questions: Provide deeper explanations of the current concept
+- For completely new questions: Use the concept database to provide comprehensive answers
+- Always assume the user wants to LEARN more about ML/AI concepts
 
 Context from our ML concept database:
-{context}"""
+{context}
+
+{conversation_context}
+
+Current user question: "{user_question}"
+
+IMPORTANT: 
+- If this is a continuation (yes, tell me more, etc.), build upon the previous conversation context
+- Never give generic greetings. Always provide specific, educational ML/AI content that builds knowledge
+- Use the conversation history to provide contextually relevant follow-up information"""
 
             response = self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",

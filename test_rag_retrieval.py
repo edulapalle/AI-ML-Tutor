@@ -60,21 +60,27 @@ TEST_USER_PROFILES = [
         "study_level": "beginner",
         "topics_of_interest": ["ML Foundations"],
         "preferred_learning_style": "study only",
-        "current_stage": "school"
+        "current_stage": "school",
+        "user_age": 10,
+        "age_group": "child"
     },
     {
         "name": "High School Student",
         "study_level": "intermediate", 
         "topics_of_interest": ["Deep Learning Basics", "LLM & Generative AI"],
         "preferred_learning_style": "study and test",
-        "current_stage": "school"
+        "current_stage": "school",
+        "user_age": 16,
+        "age_group": "teenager"
     },
     {
         "name": "College Student",
         "study_level": "advanced",
         "topics_of_interest": ["Practical ML Production", "Model Evaluation"],
         "preferred_learning_style": "study and live example demo build",
-        "current_stage": "college"
+        "current_stage": "college",
+        "user_age": 20,
+        "age_group": "young_adult"
     }
 ]
 
@@ -137,7 +143,7 @@ def test_child_friendly_responses(rag_system):
             total_tests += 1
             question = test_case["question"]
             
-            print(f"\n👤 User Profile: {profile['name']} ({profile['study_level']})")
+            print(f"\n👤 User Profile: {profile['name']} (Age: {profile['user_age']}, Level: {profile['study_level']})")
             print(f"📝 Question: {question}")
             
             # Generate response using RAG system

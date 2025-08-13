@@ -1,5 +1,5 @@
 # Authentication models for user registration and login system
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, computed_field
 from typing import List, Optional
 from datetime import date, datetime
 
@@ -33,6 +33,35 @@ class UserProfile(BaseModel):
     preferred_learning_style: Optional[str] = Field(None, description="User's preferred learning style")
     created_at: datetime = Field(..., description="Account creation timestamp")
     last_login: Optional[datetime] = Field(None, description="Last login timestamp")
+    
+    @computed_field
+    @property
+    def user_age(self) -> int:
+        """Calculate user's current age from date of birth"""
+        today = date.today()
+        age = today.year - self.date_of_birth.year
+        
+        # Adjust if birthday hasn't occurred this year yet
+        if today < date(today.year, self.date_of_birth.month, self.date_of_birth.day):
+            age -= 1
+            
+        return age
+    
+    @computed_field
+    @property 
+    def age_group(self) -> str:
+        """Determine age group for content appropriateness"""
+        age = self.user_age
+        if age < 13:
+            return "child"
+        elif age < 18:
+            return "teenager"
+        elif age < 25:
+            return "young_adult"
+        elif age < 65:
+            return "adult"
+        else:
+            return "senior"
 
 class UserSession(BaseModel):
     """User session model for maintaining authentication state"""

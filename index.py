@@ -617,11 +617,17 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
             "study_level": current_user.study_level,
             "topics_of_interest": current_user.topics_of_interest,
             "preferred_learning_style": current_user.preferred_learning_style,
-            "current_stage": current_user.current_stage
+            "current_stage": current_user.current_stage,
+            "user_age": current_user.user_age,
+            "age_group": current_user.age_group
         }
         
-        # Generate response using RAG system with ML concepts
-        response = rag_system.generate_response(request.message, user_profile_dict)
+        # Generate response using RAG system with ML concepts and conversation history
+        response = rag_system.generate_response(
+            request.message, 
+            user_profile_dict, 
+            request.conversation_history
+        )
         
         # Get relevant concepts for sources
         relevant_concepts = rag_system.search_concepts(request.message, top_k=3)

@@ -135,19 +135,96 @@ This project implements a comprehensive AI study assistant specifically designed
 
 7. **Initialize ML Concepts Database (One-time setup)**
    ```bash
-   # Run this once to populate your Zilliz Cloud with ML concepts
+   # Check system status (optional, read-only)
+   python check_ml_concepts.py
+   
+   # Populate ML concepts (run once)
    python populate_ml_concepts.py
+   
+   # Clean up if needed (removes collection)
+   python cleanup_ml_concepts.py
    ```
 
-8. **Run the application**
+8. **Test RAG System (Optional)**
+   ```bash
+   # Test child-friendly retrieval and responses
+   python test_rag_retrieval.py
+   
+   # Test safety guardrails and content filtering
+   python test_guardrails.py
+   ```
+
+9. **Run the application**
    ```bash
    python index.py
    ```
 
-9. **Access the application**
+10. **Access the application**
    - Open your browser and navigate to `http://localhost:8000`
    - You'll be redirected to the login page
    - Register a new account or log in with existing credentials
+
+## Utility Scripts
+
+The project includes several utility scripts for managing the RAG system:
+
+### RAG Management Scripts
+- **`populate_ml_concepts.py`** - One-time population of ML concepts in Zilliz Cloud
+- **`check_ml_concepts.py`** - Read-only status check of collection and system health
+- **`cleanup_ml_concepts.py`** - Clean up and reset the ML concepts collection
+- **`test_rag_retrieval.py`** - Comprehensive testing of child-friendly retrieval
+- **`test_guardrails.py`** - Test safety guardrails and content filtering
+
+
+
+### Usage Examples
+```bash
+# Check if everything is working
+python check_ml_concepts.py
+
+# Populate concepts (first time only)
+python populate_ml_concepts.py
+
+# Test the RAG system thoroughly
+python test_rag_retrieval.py
+
+# Test safety and content filtering
+python test_guardrails.py
+
+# Reset collection if needed
+python cleanup_ml_concepts.py
+
+
+```
+
+## Safety & Educational Features
+
+This AI/ML tutor is designed with comprehensive safety measures and educational excellence standards:
+
+### 🛡️ Content Guardrails
+- **Scope Restriction**: Only answers ML/AI/Data Science questions
+- **Safe Redirects**: Politely redirects off-topic questions to educational content
+- **Age-Appropriate Responses**: Tailored language and examples for different age groups
+- **Ethical AI Focus**: Redirects harmful AI questions to responsible practices
+
+### 📚 Educational Quality
+- **Curated Content**: Uses verified ML concept database as primary source
+- **Progressive Learning**: Builds knowledge from simple to complex concepts
+- **Real-World Applications**: Connects concepts to practical, inspiring examples
+- **Encouraging Language**: Builds confidence and promotes continued learning
+
+### 👶 Child Safety Features
+- **Pre-Screening**: Advanced keyword and pattern matching for question filtering
+- **Age Detection**: Automatic age calculation and appropriate content adjustment
+- **Safe Examples**: Uses toys, games, and familiar objects for young learners
+- **Positive Focus**: Emphasizes beneficial uses of AI technology
+
+### 🧪 Quality Assurance
+- **Automated Testing**: Comprehensive test suites for safety and educational quality
+- **Response Validation**: Ensures all responses meet educational standards
+- **Continuous Monitoring**: Regular verification of content appropriateness
+
+
 
 ## Database Schema
 
