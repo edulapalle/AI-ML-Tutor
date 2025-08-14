@@ -29,3 +29,4 @@ itsdangerous
 # Email validation for Pydantic EmailStr type
 email-validator
 tiktoken
+httpx  # HTTP client for async API calls

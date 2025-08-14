@@ -166,8 +166,24 @@ python index.py
 - `test_guardrails.py` - Test content filtering
 - `test_conversation_fix.py` - Test conversation flow
 - `neo4j_basic_read.py` - Read Neo4j knowledge graph
+- `rag_backend.py` - **Main RAG Backend API** (unified query pipeline)
+- `run_rag_backend.py` - Start RAG backend server
+- `test_rag_backend.py` - Test all RAG backend endpoints
+- `user_stars_schema.sql` - Database schema for star functionality
 
 ## 🔧 Usage Examples
+
+### **RAG Backend API**
+```bash
+# Start the RAG backend server (all databases integrated)
+python run_rag_backend.py
+
+# Test all endpoints (query, star, next)
+python test_rag_backend.py
+
+# Access interactive API documentation
+open http://localhost:8000/docs
+```
 
 ### **Generate Rich Educational Dataset**
 ```bash
