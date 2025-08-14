@@ -166,14 +166,32 @@ python index.py
 - `test_guardrails.py` - Test content filtering
 - `test_conversation_fix.py` - Test conversation flow
 - `neo4j_basic_read.py` - Read Neo4j knowledge graph
-- `rag_backend.py` - **Main RAG Backend API** (unified query pipeline)
+- `app.py` - **🌟 NEW: Unified Application** (auth + RAG + UI)
+- `run_app.py` - **🌟 NEW: Start unified platform**
+- `test_unified_app.py` - **🌟 NEW: Test complete system**
+- `templates/dashboard.html` - **🌟 NEW: Modern dashboard UI**
+- `static/css/dashboard.css` - **🌟 NEW: Dashboard styles**
+- `static/js/dashboard.js` - **🌟 NEW: Dashboard functionality**
+- `rag_backend.py` - RAG Backend API (standalone)
 - `run_rag_backend.py` - Start RAG backend server
 - `test_rag_backend.py` - Test all RAG backend endpoints
 - `user_stars_schema.sql` - Database schema for star functionality
 
 ## 🔧 Usage Examples
 
-### **RAG Backend API**
+### **🌟 Unified Application (RECOMMENDED)**
+```bash
+# Start the complete platform with authentication + RAG
+python run_app.py
+
+# Test the unified system
+python test_unified_app.py
+
+# Access the platform
+open http://localhost:8000/
+```
+
+### **RAG Backend API (Standalone)**
 ```bash
 # Start the RAG backend server (all databases integrated)
 python run_rag_backend.py

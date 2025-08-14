@@ -28,5 +28,5 @@ python-multipart
 itsdangerous
 # Email validation for Pydantic EmailStr type
 email-validator
-tiktoken
+# tiktoken
 httpx  # HTTP client for async API calls

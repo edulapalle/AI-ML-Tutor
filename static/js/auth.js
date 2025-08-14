@@ -69,13 +69,10 @@ class AuthManager {
                     sessionStorage.setItem('auth_token', data.access_token);
                 }
 
-                // Store user info
-                localStorage.setItem('user_info', JSON.stringify(data.user));
-
                 this.showMessage('Login successful! Redirecting...', 'success');
-                setTimeout(() => {
-                    window.location.href = '/dashboard';
-                }, 1000);
+                
+                // Redirect immediately to dashboard
+                window.location.href = '/';
             } else {
                 this.showMessage(data.detail || 'Login failed. Please check your credentials.', 'error');
             }
@@ -133,7 +130,7 @@ class AuthManager {
 
                 this.showMessage('Account created successfully! Redirecting...', 'success');
                 setTimeout(() => {
-                    window.location.href = '/dashboard';
+                    window.location.href = '/';
                 }, 1000);
             } else {
                 this.showMessage(data.detail || 'Registration failed. Please try again.', 'error');
@@ -253,7 +250,7 @@ class AuthManager {
             // Check if token is still valid
             this.validateToken(token).then(isValid => {
                 if (isValid && window.location.pathname === '/login') {
-                    window.location.href = '/dashboard';
+                    window.location.href = '/';
                 }
             });
         }
