@@ -498,6 +498,30 @@ async def supabase_insert_star(user_id: str, doc_id: str, note: Optional[str]) -
         import traceback
         traceback.print_exc()
 
+async def supabase_delete_star(user_id: str, doc_id: str) -> None:
+    """Delete a starred item for a user"""
+    print(f"🗑️ SUPABASE DELETE STAR: user_id={user_id}, doc_id={doc_id}")
+    
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        print(f"❌ SUPABASE CONFIG MISSING: URL={bool(SUPABASE_URL)}, KEY={bool(SUPABASE_ANON_KEY)}")
+        return
+    
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            url = f"{SUPABASE_URL}/rest/v1/user_stars"
+            headers = supabase_headers()
+            
+            # Delete the record
+            delete_params = {"user_id": f"eq.{user_id}", "doc_id": f"eq.{doc_id}"}
+            print(f"🗑️ DELETE PARAMS: {delete_params}")
+            delete_response = await client.delete(url, headers=headers, params=delete_params)
+            print(f"📥 DELETE RESPONSE: {delete_response.status_code}, {delete_response.text}")
+                
+    except Exception as e:
+        print(f"❌ Supabase delete star failed: {e}")
+        import traceback
+        traceback.print_exc()
+
 async def supabase_select_stars(user_id: str) -> List[StarRecord]:
     """Get all starred items for a user"""
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
@@ -785,6 +809,157 @@ async def star_content(request: StarRequest, current_user: UserProfile = Depends
 async def get_stars(current_user: UserProfile = Depends(get_current_user)):
     """Get user's starred content"""
     return await supabase_select_stars(current_user.id)
+
+@app.delete("/api/star/{doc_id}")
+async def delete_star(doc_id: str, current_user: UserProfile = Depends(get_current_user)):
+    """Delete/unstar content"""
+    print(f"🗑️ DELETE STAR REQUEST: user={current_user.username} (id={current_user.id}), doc_id={doc_id}")
+    try:
+        await supabase_delete_star(current_user.id, doc_id)
+        print(f"✅ STAR DELETED: Content unstarred for user {current_user.username}")
+        return {"message": "Content unstarred successfully"}
+    except Exception as e:
+        print(f"❌ DELETE STAR FAILED: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete star: {str(e)}")
+
+@app.get("/api/bookmark/{doc_id}")
+async def get_bookmark_content(doc_id: str, current_user: UserProfile = Depends(get_current_user)):
+    """Get the original content for a bookmarked item"""
+    print(f"📖 BOOKMARK CONTENT REQUEST: user={current_user.username}, doc_id={doc_id}")
+    
+    try:
+        # Search in both Milvus collections for the specific doc_id
+        rich_content = None
+        youtube_content = None
+        
+        # Try rich education collection first
+        if connect_milvus():
+            try:
+                collection = Collection(COLL_RICH_EDUCATION)
+                collection.load()
+                
+                results = collection.query(
+                    expr=f"id == '{doc_id}'",
+                    output_fields=["id", "concept_slug", "concept_title", "slice", "text", "tags"]
+                )
+                
+                if results:
+                    print(f"🔍 RAW RESULTS: {len(results)} items")
+                    hit = results[0]
+                    print(f"🔍 HIT TYPE: {type(hit)}")
+                    print(f"🔍 HIT CONTENT: {hit}")
+                    
+                    # Convert Milvus result to plain dict - handle different result formats
+                    try:
+                        # Try treating as dict-like object
+                        rich_content = {
+                            "doc_id": str(hit.get("id", "") if hasattr(hit, 'get') else hit["id"] if "id" in hit else ""),
+                            "title": str(hit.get("concept_title", "") if hasattr(hit, 'get') else hit.get("concept_title", "") if hasattr(hit, 'get') else hit["concept_title"] if "concept_title" in hit else ""),
+                            "source": "rich_education",
+                            "source_url": "",
+                            "kind": str(hit.get("slice", "") if hasattr(hit, 'get') else hit["slice"] if "slice" in hit else ""),
+                            "text": str(hit.get("text", "") if hasattr(hit, 'get') else hit["text"] if "text" in hit else ""),
+                            "concept_slug": str(hit.get("concept_slug", "") if hasattr(hit, 'get') else hit["concept_slug"] if "concept_slug" in hit else ""),
+                            "tags": list(hit.get("tags", []) if hasattr(hit, 'get') else hit["tags"] if "tags" in hit and hit["tags"] else [])
+                        }
+                    except Exception as field_error:
+                        print(f"⚠️ Field extraction error: {field_error}")
+                        # Fallback to manual field extraction
+                        rich_content = {
+                            "doc_id": str(doc_id),
+                            "title": "Content Found",
+                            "source": "rich_education", 
+                            "source_url": "",
+                            "kind": "content",
+                            "text": str(hit) if hit else "",
+                            "concept_slug": "",
+                            "tags": []
+                        }
+                    print(f"📚 FOUND in rich_education: {rich_content['title']}")
+                else:
+                    print(f"🔍 NO RESULTS in rich_education for: {doc_id}")
+                
+            except Exception as e:
+                print(f"⚠️ Rich education search failed: {e}")
+            
+            # Try YouTube collection if not found in rich education
+            if not rich_content:
+                try:
+                    collection = Collection(COLL_YOUTUBE_VIDEOS)
+                    collection.load()
+                    
+                    results = collection.query(
+                        expr=f"doc_id == '{doc_id}'",
+                        output_fields=["doc_id", "title", "source_url", "source", "kind", "text", "tags"]
+                    )
+                    
+                    if results:
+                        hit = results[0]
+                        print(f"🔍 YT HIT TYPE: {type(hit)}")
+                        print(f"🔍 YT HIT CONTENT: {hit}")
+                        
+                        # Convert Milvus result to plain dict - handle different result formats
+                        try:
+                            youtube_content = {
+                                "doc_id": str(hit.get("doc_id", "") if hasattr(hit, 'get') else hit["doc_id"] if "doc_id" in hit else ""),
+                                "title": str(hit.get("title", "") if hasattr(hit, 'get') else hit["title"] if "title" in hit else ""),
+                                "source": str(hit.get("source", "") if hasattr(hit, 'get') else hit["source"] if "source" in hit else ""),
+                                "source_url": str(hit.get("source_url", "") if hasattr(hit, 'get') else hit["source_url"] if "source_url" in hit else ""),
+                                "kind": str(hit.get("kind", "") if hasattr(hit, 'get') else hit["kind"] if "kind" in hit else ""),
+                                "text": str(hit.get("text", "") if hasattr(hit, 'get') else hit["text"] if "text" in hit else ""),
+                                "tags": list(hit.get("tags", []) if hasattr(hit, 'get') else hit["tags"] if "tags" in hit and hit["tags"] else [])
+                            }
+                        except Exception as field_error:
+                            print(f"⚠️ YT Field extraction error: {field_error}")
+                            # Fallback to manual field extraction
+                            youtube_content = {
+                                "doc_id": str(doc_id),
+                                "title": "YouTube Content Found",
+                                "source": "youtube_creator_videos",
+                                "source_url": "",
+                                "kind": "video",
+                                "text": str(hit) if hit else "",
+                                "tags": []
+                            }
+                        print(f"🎥 FOUND in youtube_videos: {youtube_content['title']}")
+                    else:
+                        print(f"🔍 NO RESULTS in youtube_videos for: {doc_id}")
+                        
+                except Exception as e:
+                    print(f"⚠️ YouTube search failed: {e}")
+        
+        # Return the found content
+        content = rich_content or youtube_content
+        if content:
+            print(f"✅ BOOKMARK CONTENT FOUND: {content['title']}")
+            print(f"📄 CONTENT TYPE: {type(content)}")
+            print(f"📄 CONTENT KEYS: {content.keys()}")
+            
+            # Ensure all values are JSON serializable
+            safe_content = {}
+            for key, value in content.items():
+                if value is None:
+                    safe_content[key] = ""
+                elif isinstance(value, (str, int, float, bool)):
+                    safe_content[key] = value
+                elif isinstance(value, (list, tuple)):
+                    safe_content[key] = list(value) if value else []
+                else:
+                    safe_content[key] = str(value)
+            
+            print(f"✅ SAFE CONTENT: {safe_content}")
+            return safe_content
+        else:
+            print(f"❌ BOOKMARK CONTENT NOT FOUND: {doc_id}")
+            raise HTTPException(status_code=404, detail=f"Content not found for doc_id: {doc_id}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ BOOKMARK CONTENT FAILED: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve bookmark content: {str(e)}")
 
 @app.get("/api/next")
 async def get_next_concepts(concept: str = Query(...), limit: int = 3):

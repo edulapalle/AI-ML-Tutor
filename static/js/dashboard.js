@@ -169,7 +169,19 @@ class Dashboard {
     // ===== CHAT FUNCTIONALITY =====
 
     async sendMessage(message) {
-        if (!message.trim()) return;
+        console.log('📤 SEND MESSAGE CALLED WITH:', message);
+        console.log('📤 MESSAGE TYPE:', typeof message);
+        
+        // Safety check for undefined/null message
+        if (!message || typeof message !== 'string') {
+            console.error('❌ Invalid message passed to sendMessage:', message);
+            return;
+        }
+        
+        if (!message.trim()) {
+            console.warn('⚠️ Empty message after trim');
+            return;
+        }
 
         try {
             this.showLoadingOverlay();
@@ -517,6 +529,179 @@ class Dashboard {
         return [];
     }
 
+    async deleteStar(docId) {
+        try {
+            console.log('🗑️ DELETING STAR:', docId);
+            const token = this.getAuthToken();
+            
+            const response = await fetch(`/api/star/${encodeURIComponent(docId)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            console.log('📥 DELETE RESPONSE:', response.status, response.statusText);
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ DELETE SUCCESS:', result);
+                this.showNotification('Bookmark removed! 🗑️');
+                await this.loadStars(); // Refresh the list
+            } else {
+                const error = await response.text();
+                console.error('❌ DELETE FAILED:', response.status, error);
+                throw new Error(`Failed to delete bookmark: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('⚠️ DELETE ERROR:', error);
+            this.showNotification('Failed to remove bookmark ❌');
+        }
+    }
+
+    async askAboutBookmark(star) {
+        console.log('🎯 ASK ABOUT BOOKMARK:', star);
+        
+        try {
+            // Try to fetch the full content for richer context
+            const content = await this.fetchBookmarkContent(star.doc_id);
+            console.log('📖 FETCHED CONTENT:', content);
+            
+            // Generate a smart query based on the bookmark and content
+            let query = this.generateBookmarkQuery(star, content);
+            
+            console.log('💬 GENERATED QUERY:', query);
+            console.log('💬 QUERY TYPE:', typeof query);
+            console.log('💬 QUERY LENGTH:', query ? query.length : 'undefined/null');
+            
+            // Ensure query is valid
+            if (!query || typeof query !== 'string' || query.trim() === '') {
+                console.warn('⚠️ Invalid query generated, using fallback');
+                query = `Tell me about ${star.doc_id.replace(/[_-]/g, ' ')}`;
+            }
+            
+            console.log('💬 FINAL QUERY:', query);
+            
+            // Set the message in the chat input
+            const messageInput = document.getElementById('message');
+            if (messageInput) {
+                messageInput.value = query;
+                messageInput.focus();
+            }
+            
+            // Automatically send the message
+            this.sendMessage(query);
+            
+            // Close any open modals
+            const starsModal = document.getElementById('starsModal');
+            if (starsModal && starsModal.style.display === 'block') {
+                starsModal.style.display = 'none';
+            }
+            
+            // Show notification with richer info
+            const title = content?.title || star.doc_id.substring(0, 30);
+            this.showNotification(`Asking about: ${title}... 💬`);
+            
+        } catch (error) {
+            console.error('⚠️ Failed to fetch bookmark content:', error);
+            
+            // Fallback to basic query if content fetch fails
+            let query = this.generateBookmarkQuery(star, null);
+            
+            console.log('💬 FALLBACK QUERY:', query);
+            console.log('💬 FALLBACK QUERY TYPE:', typeof query);
+            
+            // Ensure fallback query is valid
+            if (!query || typeof query !== 'string' || query.trim() === '') {
+                console.warn('⚠️ Invalid fallback query, using simple fallback');
+                query = `Tell me about ${star.doc_id.replace(/[_-]/g, ' ')}`;
+            }
+            
+            console.log('💬 FINAL FALLBACK QUERY:', query);
+            
+            const messageInput = document.getElementById('message');
+            if (messageInput) {
+                messageInput.value = query;
+                messageInput.focus();
+            }
+            
+            this.sendMessage(query);
+            
+            const starsModal = document.getElementById('starsModal');
+            if (starsModal && starsModal.style.display === 'block') {
+                starsModal.style.display = 'none';
+            }
+            
+            this.showNotification(`Asking about: ${star.doc_id.substring(0, 30)}... 💬`);
+        }
+    }
+
+    async fetchBookmarkContent(docId) {
+        const token = this.getAuthToken();
+        console.log('📖 FETCHING BOOKMARK CONTENT:', docId);
+        
+        const response = await fetch(`/api/bookmark/${encodeURIComponent(docId)}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const content = await response.json();
+            console.log('✅ CONTENT FETCHED:', content);
+            return content;
+        } else {
+            console.warn('⚠️ Content fetch failed:', response.status, response.statusText);
+            return null;
+        }
+    }
+
+    generateBookmarkQuery(star, content = null) {
+        // Use the fetched content title if available, otherwise extract from doc_id
+        let conceptName = star.doc_id;
+        
+        if (content && content.title) {
+            conceptName = content.title;
+        } else {
+            // Clean up the doc_id to make it more readable
+            if (conceptName.includes('__')) {
+                // For structured IDs like "neural-networks__definition__v1"
+                conceptName = conceptName.split('__')[0].replace(/-/g, ' ');
+            } else if (conceptName.includes('-')) {
+                // For hyphenated concepts
+                conceptName = conceptName.replace(/-/g, ' ');
+            }
+            
+            // Capitalize each word
+            conceptName = conceptName.replace(/\b\w/g, l => l.toUpperCase());
+        }
+        
+        // Generate contextual query based on content type and note
+        if (content) {
+            if (content.source === 'youtube_creator_videos') {
+                // For YouTube content, ask about the video
+                return `Tell me about the "${conceptName}" video. What are the key concepts covered?`;
+            } else if (content.kind === 'definition') {
+                return `What is ${conceptName}? Please provide a detailed definition and explanation.`;
+            } else if (content.kind === 'analogy') {
+                return `Explain ${conceptName} using analogies and examples.`;
+            } else if (content.kind === 'example') {
+                return `Show me practical examples of ${conceptName}.`;
+            } else {
+                return `Explain ${conceptName} in detail with examples.`;
+            }
+        } else {
+            // Fallback to basic queries when no content is available
+            if (star.note && star.note.toLowerCase().includes('starred:')) {
+                return `Explain ${conceptName} in detail`;
+            } else if (star.note) {
+                return `Tell me about ${conceptName}. ${star.note}`;
+            } else {
+                return `What is ${conceptName}? Please explain with examples.`;
+            }
+        }
+    }
+
     updateStarCount(count) {
         const starCount = document.querySelector('.star-count');
         if (starCount) {
@@ -539,10 +724,54 @@ class Dashboard {
             stars.slice(0, 3).forEach(star => {
                 const starItem = document.createElement('div');
                 starItem.className = 'star-item';
-                starItem.innerHTML = `
-                    <div class="star-title">${star.doc_id.substring(0, 30)}...</div>
-                    ${star.note ? `<div class="star-note">${star.note.substring(0, 50)}...</div>` : ''}
+                starItem.style.display = 'flex';
+                starItem.style.justifyContent = 'space-between';
+                starItem.style.alignItems = 'center';
+                starItem.style.padding = '0.5rem';
+                starItem.style.marginBottom = '0.5rem';
+                starItem.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                starItem.style.borderRadius = '4px';
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.style.cursor = 'pointer';
+                contentDiv.style.flex = '1';
+                contentDiv.style.transition = 'all 0.2s ease';
+                contentDiv.title = 'Click to ask about this concept';
+                contentDiv.innerHTML = `
+                    <div class="star-title" style="font-weight: 600; font-size: 0.85rem; color: #667eea;">${star.doc_id.substring(0, 30)}...</div>
+                    ${star.note ? `<div class="star-note" style="color: #666; font-size: 0.8rem;">${star.note.substring(0, 50)}...</div>` : ''}
+                    <div style="font-size: 0.7rem; color: #999; margin-top: 0.2rem;">💬 Click to ask about this</div>
                 `;
+                
+                // Add hover effect
+                contentDiv.addEventListener('mouseenter', () => {
+                    contentDiv.style.backgroundColor = 'rgba(102, 126, 234, 0.1)';
+                    contentDiv.style.borderRadius = '4px';
+                });
+                contentDiv.addEventListener('mouseleave', () => {
+                    contentDiv.style.backgroundColor = 'transparent';
+                });
+                
+                // Make bookmark clickable to trigger chat
+                contentDiv.addEventListener('click', () => {
+                    this.askAboutBookmark(star);
+                });
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.style.background = 'none';
+                deleteBtn.style.border = 'none';
+                deleteBtn.style.cursor = 'pointer';
+                deleteBtn.style.fontSize = '1rem';
+                deleteBtn.style.padding = '0.25rem';
+                deleteBtn.title = 'Remove bookmark';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.deleteStar(star.doc_id);
+                });
+                
+                starItem.appendChild(contentDiv);
+                starItem.appendChild(deleteBtn);
                 starsList.appendChild(starItem);
             });
 
@@ -571,11 +800,61 @@ class Dashboard {
             stars.forEach(star => {
                 const starCard = document.createElement('div');
                 starCard.className = 'star-card';
-                starCard.innerHTML = `
-                    <div class="star-card-title">${star.doc_id}</div>
-                    ${star.note ? `<div class="star-card-note">${star.note}</div>` : ''}
-                    ${star.created_at ? `<div class="star-card-date">${new Date(star.created_at).toLocaleDateString()}</div>` : ''}
+                starCard.style.position = 'relative';
+                starCard.style.padding = '1rem';
+                starCard.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                starCard.style.borderRadius = '8px';
+                starCard.style.marginBottom = '1rem';
+                starCard.style.border = '1px solid rgba(102, 126, 234, 0.2)';
+                
+                // Delete button (top-right corner)
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.style.position = 'absolute';
+                deleteBtn.style.top = '0.5rem';
+                deleteBtn.style.right = '0.5rem';
+                deleteBtn.style.background = 'rgba(255, 255, 255, 0.8)';
+                deleteBtn.style.border = 'none';
+                deleteBtn.style.borderRadius = '50%';
+                deleteBtn.style.width = '2rem';
+                deleteBtn.style.height = '2rem';
+                deleteBtn.style.cursor = 'pointer';
+                deleteBtn.style.fontSize = '0.9rem';
+                deleteBtn.title = 'Remove bookmark';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.deleteStar(star.doc_id);
+                });
+                
+                // Content
+                const contentDiv = document.createElement('div');
+                contentDiv.style.cursor = 'pointer';
+                contentDiv.style.transition = 'all 0.2s ease';
+                contentDiv.title = 'Click to ask about this concept';
+                contentDiv.innerHTML = `
+                    <div class="star-card-title" style="font-weight: 600; margin-bottom: 0.5rem; padding-right: 2rem; color: #667eea;">${star.doc_id}</div>
+                    ${star.note ? `<div class="star-card-note" style="color: #666; margin-bottom: 0.5rem;">${star.note}</div>` : ''}
+                    ${star.created_at ? `<div class="star-card-date" style="color: #999; font-size: 0.8rem;">${new Date(star.created_at).toLocaleDateString()}</div>` : ''}
+                    <div style="font-size: 0.8rem; color: #667eea; margin-top: 0.5rem; font-weight: 500;">💬 Click to ask about this concept</div>
                 `;
+                
+                // Add hover effect
+                contentDiv.addEventListener('mouseenter', () => {
+                    starCard.style.backgroundColor = 'rgba(102, 126, 234, 0.15)';
+                    starCard.style.transform = 'translateY(-2px)';
+                });
+                contentDiv.addEventListener('mouseleave', () => {
+                    starCard.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                    starCard.style.transform = 'translateY(0px)';
+                });
+                
+                // Make bookmark clickable to trigger chat
+                contentDiv.addEventListener('click', () => {
+                    this.askAboutBookmark(star);
+                });
+                
+                starCard.appendChild(contentDiv);
+                starCard.appendChild(deleteBtn);
                 starsGrid.appendChild(starCard);
             });
         }
