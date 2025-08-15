@@ -679,14 +679,26 @@ class Dashboard {
             if (content.source === 'youtube_creator_videos') {
                 // For YouTube content, ask about the video
                 return `Tell me about the "${conceptName}" video. What are the key concepts covered?`;
-            } else if (content.kind === 'definition') {
-                return `What is ${conceptName}? Please provide a detailed definition and explanation.`;
-            } else if (content.kind === 'analogy') {
-                return `Explain ${conceptName} using analogies and examples.`;
-            } else if (content.kind === 'example') {
-                return `Show me practical examples of ${conceptName}.`;
             } else {
-                return `Explain ${conceptName} in detail with examples.`;
+                // Use the same type-specific logic as viewCitationContent
+                switch (content.kind.toLowerCase()) {
+                    case 'definition':
+                        return `What is ${conceptName}? Please provide a detailed definition and explanation.`;
+                    case 'analogy':
+                        return `Explain ${conceptName} using analogies and real-world comparisons to help me understand it better.`;
+                    case 'example':
+                        return `Give me more practical examples and use cases of ${conceptName}. Show me how it works in different scenarios.`;
+                    case 'mistake':
+                        return `What are common mistakes people make with ${conceptName}? How can I avoid these pitfalls?`;
+                    case 'quiz':
+                        return `Give me a quiz about ${conceptName}. Ask me questions to test my understanding and provide interactive learning.`;
+                    case 'related':
+                        return `What concepts are related to ${conceptName}? Show me how it connects to other ML/AI topics.`;
+                    case 'content':
+                        return `Tell me more about ${conceptName}. Provide comprehensive information and insights.`;
+                    default:
+                        return `Explain ${conceptName} in detail with examples and practical applications.`;
+                }
             }
         } else {
             // Fallback to basic queries when no content is available
@@ -879,17 +891,39 @@ class Dashboard {
         const conceptName = citation.title || citation.doc_id.replace(/[_-]/g, ' ');
         let query;
         
-        if (citation.kind === 'definition') {
-            query = `What is ${conceptName}? Please provide a detailed definition.`;
-        } else if (citation.kind === 'analogy') {
-            query = `Explain ${conceptName} using analogies and examples.`;
-        } else if (citation.kind === 'example') {
-            query = `Show me practical examples of ${conceptName}.`;
-        } else {
-            query = `Tell me more about ${conceptName}.`;
+        // Generate type-specific queries based on content category
+        switch (citation.kind.toLowerCase()) {
+            case 'definition':
+                query = `What is ${conceptName}? Please provide a detailed definition and explanation.`;
+                break;
+            case 'analogy':
+                query = `Explain ${conceptName} using analogies and real-world comparisons to help me understand it better.`;
+                break;
+            case 'example':
+                query = `Give me more practical examples and use cases of ${conceptName}. Show me how it works in different scenarios.`;
+                break;
+            case 'mistake':
+                query = `What are common mistakes people make with ${conceptName}? How can I avoid these pitfalls?`;
+                break;
+            case 'quiz':
+                query = `Give me a quiz about ${conceptName}. Ask me questions to test my understanding and provide interactive learning.`;
+                break;
+            case 'related':
+                query = `What concepts are related to ${conceptName}? Show me how it connects to other ML/AI topics.`;
+                break;
+            case 'content':
+                query = `Tell me more about ${conceptName}. Provide comprehensive information and insights.`;
+                break;
+            case 'video': // For YouTube content
+                query = `Tell me about the key concepts covered in this ${conceptName} video. What are the main learning points?`;
+                break;
+            default:
+                query = `Explain ${conceptName} in detail with examples and practical applications.`;
+                break;
         }
         
-        console.log('💬 GENERATED QUERY FOR CONTENT VIEW:', query);
+        console.log('💬 GENERATED TYPE-SPECIFIC QUERY:', query);
+        console.log('🏷️ CONTENT TYPE:', citation.kind);
         
         // Set the message in the chat input and send it
         const messageInput = document.getElementById('message');
@@ -899,7 +933,21 @@ class Dashboard {
         }
         
         this.sendMessage(query);
-        this.showNotification(`Viewing content: ${conceptName} 📖`);
+        this.showNotification(`${this.getActionIcon(citation.kind)} ${conceptName}`);
+    }
+
+    getActionIcon(kind) {
+        const iconMap = {
+            'definition': '📚 Learning about:',
+            'analogy': '🔍 Exploring analogies for:',
+            'example': '💡 Getting examples of:',
+            'mistake': '⚠️ Learning mistakes about:',
+            'quiz': '🧠 Taking quiz on:',
+            'related': '🔗 Finding related topics to:',
+            'content': '📖 Reading about:',
+            'video': '🎥 Watching content about:'
+        };
+        return iconMap[kind.toLowerCase()] || '📖 Viewing content:';
     }
 
     updateStarCount(count) {
