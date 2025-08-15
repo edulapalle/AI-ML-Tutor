@@ -72,6 +72,59 @@ def is_greeting(text: str) -> bool:
     t = text.lower().strip()
     return t in GREETINGS
 
+def is_in_educational_context(text: str, conversation_history: Optional[list] = None) -> bool:
+    """Check if user is responding to a quiz, giving answers, or in educational conversation"""
+    if not conversation_history:
+        return False
+    
+    # Look at recent assistant messages for educational context
+    recent_messages = conversation_history[-3:] if len(conversation_history) >= 3 else conversation_history
+    
+    for msg in recent_messages:
+        if msg.get("role") == "assistant":
+            content = msg.get("content", "").lower()
+            # Check if assistant recently asked educational questions or gave quizzes
+            if any(keyword in content for keyword in [
+                "quiz", "question", "which", "what is", "choose", "select", 
+                "true or false", "correct answer", "explain", "define",
+                "example", "compare", "learning", "study", "understand",
+                "neural network", "machine learning", "algorithm", "model",
+                "data", "training", "prediction", "classification"
+            ]):
+                return True
+    
+    # Check if current message looks like an educational response
+    t = text.lower().strip()
+    
+    # Common quiz answer patterns
+    quiz_patterns = [
+        # Multiple choice answers
+        r"^[a-d]$", r"^option [a-d]$", r"^choice [a-d]$",
+        # Short technical terms (common in ML)
+        r"^(cnn|rnn|lstm|gru|bert|gpt|svm|knn|pca|nlp|ai|ml)$",
+        # Yes/No answers
+        r"^(yes|no|true|false|correct|incorrect)$",
+        # Numbers (for technical questions)
+        r"^\d+$", r"^\d+\.\d+$",
+        # Common ML terms as answers
+        r"^(neural network|deep learning|supervised|unsupervised|regression|classification)$"
+    ]
+    
+    import re
+    for pattern in quiz_patterns:
+        if re.match(pattern, t):
+            return True
+    
+    # Check for short answers that might be technical terms
+    if len(t.split()) <= 3 and any(keyword in t for keyword in [
+        "network", "learning", "model", "algorithm", "data", "training",
+        "prediction", "feature", "layer", "activation", "gradient", "loss",
+        "accuracy", "precision", "recall", "overfitting", "underfitting"
+    ]):
+        return True
+    
+    return False
+
 def cheap_ml_scope(text: str) -> bool:
     """Fast keyword-based ML scope check"""
     t = text.lower()
@@ -220,6 +273,7 @@ def guardrail_result(allowed: bool, reason: str, http_status: int = 400):
 async def run_guardrails(
     text: str,
     *,
+    conversation_history: Optional[list] = None,
     max_len: int = 800,
     use_llm_scope: bool = True,  # Default to True for better accuracy
     use_moderation: bool = True,  # Default to True for safety
@@ -230,6 +284,7 @@ async def run_guardrails(
     
     Args:
         text: User input text
+        conversation_history: Optional list of previous conversation messages for context
         max_len: Maximum allowed text length
         use_llm_scope: Whether to use LLM for scope checking (most accurate)
         use_moderation: Whether to run OpenAI moderation
@@ -255,6 +310,15 @@ async def run_guardrails(
     # 3. Allow conversation follow-ups
     if is_followup(q):
         return guardrail_result(True, "Conversation follow-up.")
+    
+    # 3.5. Check if user is in educational context (quiz answers, etc.)
+    if is_in_educational_context(q, conversation_history):
+        latency_ms = int((time.time() - t0) * 1000)
+        return {
+            "allowed": True, 
+            "reason": "Educational context - quiz answer or learning response", 
+            "latency_ms": latency_ms
+        }
     
     # 4. Check for prompt injection attempts
     if hits_deny_patterns(q):

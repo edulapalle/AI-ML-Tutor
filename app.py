@@ -95,16 +95,68 @@ templates = Jinja2Templates(directory="templates")
 # Initialize authentication service
 auth_service = AuthService()
 
+# In-memory quiz storage (in production, use Redis or database)
+quiz_sessions: Dict[str, Any] = {}
+
 # ================================= DATA MODELS =================================
 
 # RAG Models
-Intent = Literal["explain", "define", "compare", "related", "next", "blocked", "fallback"]
+Intent = Literal["explain", "define", "compare", "related", "next", "examples", "quiz", "blocked", "fallback"]
 
 class ChatRequest(BaseModel):
     message: str
     conversation_history: List[Dict[str, str]] = []
     audience: Literal["kid", "teen", "adult"] = "kid"
     use_graph: bool = True
+
+# Quiz Models
+class QuizQuestion(BaseModel):
+    id: str
+    question: str
+    options: List[str]
+    correct_answer: int  # Index of correct option
+    explanation: str
+    topic: str
+    difficulty: Literal["beginner", "intermediate", "advanced"]
+
+class QuizSession(BaseModel):
+    session_id: str
+    user_id: str
+    topic: str
+    difficulty: Literal["beginner", "intermediate", "advanced"]
+    questions: List[QuizQuestion]
+    current_question: int = 0
+    score: int = 0
+    answers: List[int] = []  # User's answers
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+
+class QuizRequest(BaseModel):
+    topic: str
+    difficulty: Literal["beginner", "intermediate", "advanced"] = "beginner"
+    num_questions: int = Field(default=5, ge=1, le=10)
+
+class QuizAnswer(BaseModel):
+    session_id: str
+    answer: int  # Index of selected option
+
+class QuizResponse(BaseModel):
+    session_id: str
+    question: QuizQuestion
+    is_correct: Optional[bool] = None
+    feedback: Optional[str] = None
+    score: int
+    progress: str  # e.g., "3/5"
+    completed: bool = False
+
+class QuizResult(BaseModel):
+    session_id: str
+    topic: str
+    final_score: int
+    total_questions: int
+    percentage: float
+    feedback: str
+    recommendations: List[str]
 
 class Citation(BaseModel):
     doc_id: str
@@ -191,16 +243,34 @@ def test_neo4j_connection() -> bool:
 # Old guardrail function removed - now using advanced LLM-based guardrails from run_gaurdrails.py
 
 def classify_intent(text: str) -> Intent:
-    """Classify user intent"""
+    """Enhanced intent classification for educational interactions"""
     t = text.lower()
-    if any(x in t for x in ["compare", "difference", "vs", "versus", "contrast"]):
+    
+    # Question patterns with more specific detection
+    if any(x in t for x in ["compare", "difference", "vs", "versus", "contrast", "better than", "which is"]):
         return "compare"
-    if any(x in t for x in ["related", "relation", "how is x related", "connection"]):
+    
+    if any(x in t for x in ["related", "relation", "how is x related", "connection", "connects to", "builds on"]):
         return "related"
-    if any(x in t for x in ["what next", "what should i learn next", "next after", "prereq", "prerequisite"]):
+    
+    if any(x in t for x in ["what next", "what should i learn next", "next after", "prereq", "prerequisite", 
+                           "after learning", "what comes after", "learning path", "roadmap"]):
         return "next"
-    if any(x in t for x in ["define", "definition", "meaning of"]):
+    
+    # More specific definition patterns
+    if any(x in t for x in ["define", "definition", "meaning of", "what is", "what are", "what does", 
+                           "tell me about"]) and len(t.split()) <= 6:  # Short definition requests
         return "define"
+    
+    # Example-focused requests - New intent type
+    if any(x in t for x in ["example", "examples", "show me", "demonstrate", "illustrate", "instance"]):
+        return "examples"
+    
+    # Quiz/test requests - New intent type  
+    if any(x in t for x in ["quiz", "test", "question", "check my understanding", "practice"]):
+        return "quiz"
+    
+    # Default to explain for comprehensive coverage
     return "explain"
 
 def generate_query_embedding(query: str) -> List[float]:
@@ -373,27 +443,135 @@ def rerank_with_llm(question: str, items: List[Dict], top_k: int = 5) -> List[Di
         print(f"❌ Reranking failed: {e}")
         return items[:top_k]
 
-def build_prompt(audience: str, question: str, contexts: List[Dict], next_concepts: List[str]) -> str:
-    """Build structured prompt for LLM"""
+def build_intent_based_prompt(intent: str, audience: str, question: str, contexts: List[Dict], next_concepts: List[str], conversation_history: Optional[List[Dict]] = None) -> str:
+    """Build intent-aware structured prompt for LLM with educational focus"""
+    
+    # Extract context text
     parts = []
     for ctx in contexts[:3]:
         parts.append(ctx.get("text", "") or "")
     ctx_text = "\n\n---\n\n".join(parts)
+    
+    # Check if this is a quiz follow-up response
+    is_quiz_response = False
+    if conversation_history:
+        recent_messages = conversation_history[-2:] if len(conversation_history) >= 2 else conversation_history
+        for msg in recent_messages:
+            if msg.get("role") == "assistant" and "quiz" in msg.get("content", "").lower():
+                is_quiz_response = True
+                break
+    
+    # Base system message
+    base_system = f"You are a kind ML tutor for a {audience}. Use clear, educational language. Be accurate and safe."
+    
+    # Add conversation context if this is a quiz response
+    conversation_context = ""
+    if is_quiz_response and conversation_history:
+        conversation_context = "\n\nConversation context (recent exchanges):\n"
+        for msg in conversation_history[-3:]:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")[:200]  # Limit context length
+            conversation_context += f"{role.title()}: {content}\n"
+        conversation_context += "\n"
+    
+    # Intent-specific prompt templates
+    if intent == "explain":
+        structure = (
+            "Provide a comprehensive explanation with:\n"
+            "1) Clear definition (2-3 sentences)\n"
+            "2) Simple analogy to help understanding\n"
+            "3) Practical example or use case\n"
+            "4) Key points to remember (2-3 bullets)\n"
+            "5) What to explore next (mention related topics)"
+        )
+        
+    elif intent == "define":
+        structure = (
+            "Provide a focused definition with:\n"
+            "1) Precise definition (1-2 sentences)\n"
+            "2) Why this concept matters\n"
+            "3) Simple example to illustrate\n"
+            "4) Common misconceptions to avoid\n"
+            "5) Related concepts worth learning"
+        )
+        
+    elif intent == "compare":
+        structure = (
+            "Provide a clear comparison with:\n"
+            "1) Brief explanation of each concept\n"
+            "2) Key similarities between them\n"
+            "3) Important differences\n"
+            "4) When to use each one\n"
+            "5) Learning path: which to study first"
+        )
+        
+    elif intent == "related":
+        structure = (
+            "Show the connections with:\n"
+            "1) How these concepts relate\n"
+            "2) Dependencies (what builds on what)\n"
+            "3) Practical scenarios where they work together\n"
+            "4) Common patterns or principles\n"
+            "5) Suggested learning sequence"
+        )
+        
+    elif intent == "next":
+        structure = (
+            "Provide learning guidance with:\n"
+            "1) Your current understanding level\n"
+            "2) Logical next steps to take\n"
+            "3) Prerequisites you might need\n"
+            "4) Practical projects to try\n"
+            "5) Resources to explore further"
+        )
+        
+    elif intent == "examples":
+        structure = (
+            "Focus on practical examples with:\n"
+            "1) Real-world scenario or application\n"
+            "2) Step-by-step walkthrough\n"
+            "3) Why this example works\n"
+            "4) Variations you might encounter\n"
+            "5) Try it yourself: next steps"
+        )
+        
+    elif intent == "quiz":
+        structure = (
+            "Create an interactive learning experience with:\n"
+            "1) Quick knowledge check question\n"
+            "2) Key concepts to remember\n"
+            "3) Common mistakes to avoid\n"
+            "4) Think about: discussion prompt\n"
+            "5) Practice suggestion for deeper learning"
+        )
+        
+    else:  # fallback for any other intent
+        structure = (
+            "Provide an educational response with:\n"
+            "1) Direct answer to the question\n"
+            "2) Context and background\n"
+            "3) Practical examples\n"
+            "4) Key takeaways\n"
+            "5) Further learning opportunities"
+        )
+    
+    # Special handling for quiz responses
+    if is_quiz_response:
+        quiz_instruction = "\n\nIMPORTANT: The user is responding to a quiz question. Provide feedback on their answer, explain why it's correct/incorrect, and continue the educational conversation naturally."
+    else:
+        quiz_instruction = ""
 
-    return (
-        f"System: You are a kind ML tutor for a {audience}. "
-        "Use plain words, short sentences, no equations unless asked. Be accurate and safe.\n\n"
-        f"Context (use to answer):\n{ctx_text}\n\n"
-        f"User question: {question}\n\n"
-        "Write the answer with this structure:\n"
-        "1) Simple explanation (≤3 short sentences)\n"
-        "2) Analogy (1–2 sentences)\n"
-        "3) Real-life example (1 sentence)\n"
-        "4) Visual idea (start with 'Image: ...')\n"
-        "5) Next concepts (2 bullets) — you may use the provided list\n\n"
-        f"Suggested next concepts: {', '.join(next_concepts) if next_concepts else 'None'}\n"
-        "Keep it under 180 words."
-    )
+    return f"""{base_system}{conversation_context}
+Context (use to answer):
+{ctx_text}
+
+User question: {question}
+
+{structure}
+
+Suggested next concepts: {', '.join(next_concepts) if next_concepts else 'Explore related ML topics'}
+
+Keep response educational, engaging, and under 200 words. Always maintain learning focus.{quiz_instruction}"""
 
 def generate_answer(prompt: str) -> str:
     """Generate answer using OpenAI"""
@@ -410,6 +588,140 @@ def generate_answer(prompt: str) -> str:
     except Exception as e:
         print(f"❌ Answer generation failed: {e}")
         return "I apologize, but I'm having trouble generating a response right now."
+
+def generate_quiz_questions(topic: str, difficulty: str, num_questions: int, audience: str = "kid") -> List[QuizQuestion]:
+    """Generate quiz questions using LLM and knowledge base"""
+    
+    # Search for relevant content from knowledge base
+    if not connect_milvus():
+        # Fallback to LLM-only generation
+        return generate_questions_llm_only(topic, difficulty, num_questions, audience)
+    
+    # Get relevant educational content
+    hits = milvus_search(COLL_RICH_EDUCATION, topic, top_k=10)
+    
+    # Extract context for question generation
+    context_parts = []
+    for hit in hits[:5]:  # Use top 5 most relevant
+        text = hit.get('text', '')
+        if text and len(text) > 50:  # Only use substantial content
+            context_parts.append(text[:300])  # Limit length
+    
+    context = "\n\n---\n\n".join(context_parts)
+    
+    # Generate questions using LLM with context
+    prompt = f"""You are an educational quiz generator for {audience} learners studying AI/ML concepts.
+
+Topic: {topic}
+Difficulty: {difficulty}
+Number of questions: {num_questions}
+
+Context from knowledge base:
+{context}
+
+Generate {num_questions} multiple choice questions with exactly 4 options each.
+
+Requirements:
+1. Questions appropriate for {difficulty} level
+2. Language suitable for {audience} learners
+3. Exactly 4 options (A, B, C, D) per question
+4. One clearly correct answer
+5. Educational explanations for correct answers
+6. Focus on understanding, not memorization
+
+Format as JSON array:
+[
+  {{
+    "id": "q1",
+    "question": "What is...",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correct_answer": 0,
+    "explanation": "The correct answer is A because...",
+    "topic": "{topic}",
+    "difficulty": "{difficulty}"
+  }}
+]
+
+Generate educational, engaging questions that test understanding."""
+    
+    try:
+        response = oai.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.7,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        questions_json = response.choices[0].message.content or "[]"
+        
+        # Extract JSON from response
+        import json
+        import re
+        
+        # Find JSON array in response
+        json_match = re.search(r'\[.*\]', questions_json, re.DOTALL)
+        if json_match:
+            questions_data = json.loads(json_match.group())
+            
+            questions = []
+            for i, q_data in enumerate(questions_data[:num_questions]):
+                questions.append(QuizQuestion(
+                    id=f"q{i+1}",
+                    question=q_data.get("question", ""),
+                    options=q_data.get("options", []),
+                    correct_answer=q_data.get("correct_answer", 0),
+                    explanation=q_data.get("explanation", ""),
+                    topic=topic,
+                    difficulty=difficulty
+                ))
+            
+            return questions
+        else:
+            return generate_questions_llm_only(topic, difficulty, num_questions, audience)
+            
+    except Exception as e:
+        print(f"Error generating quiz questions: {e}")
+        return generate_questions_llm_only(topic, difficulty, num_questions, audience)
+
+def generate_questions_llm_only(topic: str, difficulty: str, num_questions: int, audience: str) -> List[QuizQuestion]:
+    """Fallback question generation without knowledge base"""
+    
+    # Create simple fallback questions based on common ML topics
+    fallback_questions = {
+        "machine learning": [
+            {
+                "question": "What is machine learning?",
+                "options": ["A way to teach computers to learn", "A type of computer game", "A programming language", "A type of robot"],
+                "correct_answer": 0,
+                "explanation": "Machine learning is a way to teach computers to learn patterns from data without being explicitly programmed for every task."
+            }
+        ],
+        "neural networks": [
+            {
+                "question": "What is a neural network inspired by?",
+                "options": ["The human brain", "Computer circuits", "Mathematical equations", "Internet connections"],
+                "correct_answer": 0,
+                "explanation": "Neural networks are inspired by how neurons in the human brain work together to process information."
+            }
+        ]
+    }
+    
+    # Return fallback questions or generate simple ones
+    questions = []
+    base_questions = fallback_questions.get(topic.lower(), fallback_questions["machine learning"])
+    
+    for i in range(min(num_questions, len(base_questions))):
+        q_data = base_questions[i]
+        questions.append(QuizQuestion(
+            id=f"fallback_q{i+1}",
+            question=q_data["question"],
+            options=q_data["options"],
+            correct_answer=q_data["correct_answer"],
+            explanation=q_data["explanation"],
+            topic=topic,
+            difficulty=difficulty
+        ))
+    
+    return questions
 
 # ================================= AUTHENTICATION =================================
 
@@ -618,12 +930,13 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
     print(f"   Study Level: {current_user.study_level}")
     print(f"   Timestamp: {datetime.now().isoformat()}")
     
-    # 1) Advanced Guardrails
+    # 1) Advanced Guardrails with conversation context
     from run_gaurdrails import run_guardrails
     
     print(f"   🛡️ Running comprehensive guardrails...")
     guardrail_result = await run_guardrails(
         request.message,
+        conversation_history=request.conversation_history,
         use_llm_scope=True,
         use_moderation=True
     )
@@ -680,7 +993,9 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
             "define": f"I'd like to define that for you, but my knowledge base is currently offline. This is typically a temporary issue with the vector database connection.",
             "compare": f"Comparing concepts requires access to my knowledge base, which is currently unavailable. Please try again shortly.",
             "related": f"I need my knowledge graph to find related concepts, but it's currently offline. Please check back in a few minutes.",
-            "next": f"To suggest what to learn next, I need access to my learning path database, which is currently unavailable."
+            "next": f"To suggest what to learn next, I need access to my learning path database, which is currently unavailable.",
+            "examples": f"I'd love to show you examples, but I need access to my knowledge base which is currently offline. Please try again shortly.",
+            "quiz": f"I'd like to create a quiz for you, but my knowledge base is currently unavailable. Please check back in a few minutes."
         }
         
         return ChatResponse(
@@ -694,7 +1009,7 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
     # 4) Retrieval based on intent
     print(f"\n📚 DATA RETRIEVAL:")
     if intent in ["explain", "define"]:
-        # Milvus only - prioritize rich education content
+        # Milvus only - prioritize rich education content for explanations/definitions
         print(f"   🔍 Searching rich_ml_education collection...")
         rich_hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=8)
         print(f"   📊 Retrieved {len(rich_hits)} results from rich_ml_education")
@@ -705,6 +1020,29 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
         
         # Combine results (rich education first, then YouTube)
         hits = rich_hits + youtube_hits
+    
+    elif intent == "examples":
+        # For examples, prioritize YouTube videos first for practical demonstrations
+        print(f"   🔍 Searching for practical examples...")
+        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=6)
+        rich_hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=6)
+        print(f"   📊 YouTube videos: {len(youtube_hits)} results")
+        print(f"   📊 Rich education: {len(rich_hits)} results")
+        
+        # YouTube first for examples
+        hits = youtube_hits + rich_hits
+    
+    elif intent == "quiz":
+        # For quizzes, prioritize rich educational content for structured knowledge
+        print(f"   🔍 Searching for quiz-worthy content...")
+        rich_hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=10)
+        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=2)
+        print(f"   📊 Rich education: {len(rich_hits)} results")
+        print(f"   📊 YouTube videos: {len(youtube_hits)} results")
+        
+        # Rich education first for quizzes
+        hits = rich_hits + youtube_hits
+        
     else:
         # Combined search for compare/related/next
         print(f"   🔍 Combined search across both collections...")
@@ -731,7 +1069,7 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
     
     # 5) Graph context for compare/related/next intents
     next_concepts = []
-    if request.use_graph and intent in {"compare", "related", "next"}:
+    if request.use_graph and intent in {"compare", "related", "next", "examples"}:
         print(f"\n🌐 NEO4J KNOWLEDGE GRAPH:")
         print(f"   🔍 Querying for related concepts...")
         next_concepts = neo4j_query_next_concepts(request.message, limit=3)
@@ -757,7 +1095,7 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
     print(f"\n💭 RESPONSE GENERATION:")
     print(f"   🎯 Audience: {request.audience}")
     print(f"   📝 Building structured prompt...")
-    prompt = build_prompt(request.audience, request.message, final_contexts, next_concepts)
+    prompt = build_intent_based_prompt(intent, request.audience, request.message, final_contexts, next_concepts, request.conversation_history)
     print(f"   🤖 Generating answer with GPT...")
     answer = generate_answer(prompt)
     print(f"   ✅ Generated {len(answer)} character response")
@@ -966,6 +1304,173 @@ async def get_next_concepts(concept: str = Query(...), limit: int = 3):
     """Get next learning concepts"""
     next_concepts = neo4j_query_next_concepts(concept, limit)
     return {"concept": concept, "next_concepts": next_concepts}
+
+# ================================= QUIZ ENDPOINTS =================================
+
+@app.post("/api/quiz/start", response_model=QuizResponse)
+async def start_quiz(request: QuizRequest, current_user: UserProfile = Depends(get_current_user)):
+    """Start a new quiz session"""
+    import uuid
+    
+    session_id = str(uuid.uuid4())
+    
+    print(f"🎯 STARTING QUIZ SESSION: {session_id}")
+    print(f"   👤 User: {current_user.username}")
+    print(f"   📚 Topic: {request.topic}")
+    print(f"   🎚️ Difficulty: {request.difficulty}")
+    print(f"   🔢 Questions: {request.num_questions}")
+    
+    # Generate questions
+    questions = generate_quiz_questions(
+        topic=request.topic,
+        difficulty=request.difficulty,
+        num_questions=request.num_questions,
+        audience=current_user.age_group
+    )
+    
+    if not questions:
+        raise HTTPException(status_code=500, detail="Failed to generate quiz questions")
+    
+    # Create quiz session
+    session = QuizSession(
+        session_id=session_id,
+        user_id=current_user.id,
+        topic=request.topic,
+        difficulty=request.difficulty,
+        questions=questions,
+        started_at=datetime.now()
+    )
+    
+    # Store session
+    quiz_sessions[session_id] = session
+    
+    print(f"   ✅ Generated {len(questions)} questions")
+    print(f"   📝 First question: {questions[0].question[:50]}...")
+    
+    # Return first question
+    return QuizResponse(
+        session_id=session_id,
+        question=questions[0],
+        score=0,
+        progress="1/" + str(len(questions)),
+        completed=False
+    )
+
+@app.post("/api/quiz/answer", response_model=QuizResponse)
+async def answer_quiz(request: QuizAnswer, current_user: UserProfile = Depends(get_current_user)):
+    """Submit an answer to a quiz question"""
+    
+    session = quiz_sessions.get(request.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Quiz session not found")
+    
+    if session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized access to quiz session")
+    
+    if session.completed_at:
+        raise HTTPException(status_code=400, detail="Quiz already completed")
+    
+    current_q = session.questions[session.current_question]
+    is_correct = request.answer == current_q.correct_answer
+    
+    print(f"🎯 QUIZ ANSWER: {request.session_id}")
+    print(f"   📝 Question: {current_q.question[:50]}...")
+    print(f"   ✅ User answer: {current_q.options[request.answer] if request.answer < len(current_q.options) else 'Invalid'}")
+    print(f"   ✅ Correct: {is_correct}")
+    
+    # Record answer
+    session.answers.append(request.answer)
+    if is_correct:
+        session.score += 1
+    
+    # Move to next question
+    session.current_question += 1
+    
+    # Check if quiz is completed
+    if session.current_question >= len(session.questions):
+        session.completed_at = datetime.now()
+        
+        # Generate final feedback
+        percentage = (session.score / len(session.questions)) * 100
+        
+        if percentage >= 80:
+            feedback = f"Excellent work! You scored {session.score}/{len(session.questions)} ({percentage:.0f}%). You have a strong understanding of {session.topic}!"
+        elif percentage >= 60:
+            feedback = f"Good job! You scored {session.score}/{len(session.questions)} ({percentage:.0f}%). Consider reviewing some concepts to strengthen your understanding."
+        else:
+            feedback = f"Keep learning! You scored {session.score}/{len(session.questions)} ({percentage:.0f}%). Don't worry - practice makes perfect in {session.topic}!"
+        
+        return QuizResponse(
+            session_id=session.session_id,
+            question=current_q,
+            is_correct=is_correct,
+            feedback=current_q.explanation,
+            score=session.score,
+            progress=f"{len(session.questions)}/{len(session.questions)}",
+            completed=True
+        )
+    
+    # Return next question
+    next_question = session.questions[session.current_question]
+    
+    return QuizResponse(
+        session_id=session.session_id,
+        question=next_question,
+        is_correct=is_correct,
+        feedback=current_q.explanation,
+        score=session.score,
+        progress=f"{session.current_question + 1}/{len(session.questions)}",
+        completed=False
+    )
+
+@app.get("/api/quiz/result/{session_id}", response_model=QuizResult)
+async def get_quiz_result(session_id: str, current_user: UserProfile = Depends(get_current_user)):
+    """Get detailed quiz results"""
+    
+    session = quiz_sessions.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Quiz session not found")
+    
+    if session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized access to quiz session")
+    
+    if not session.completed_at:
+        raise HTTPException(status_code=400, detail="Quiz not yet completed")
+    
+    percentage = (session.score / len(session.questions)) * 100
+    
+    # Generate personalized feedback
+    if percentage >= 80:
+        feedback = f"Outstanding performance! You've mastered {session.topic} at the {session.difficulty} level."
+        recommendations = [
+            f"Try advanced topics in {session.topic}",
+            "Explore related ML concepts",
+            "Consider practical projects"
+        ]
+    elif percentage >= 60:
+        feedback = f"Good foundation in {session.topic}! A few areas could use more practice."
+        recommendations = [
+            f"Review key {session.topic} concepts",
+            "Take more practice quizzes",
+            "Study specific topics you missed"
+        ]
+    else:
+        feedback = f"You're learning! {session.topic} takes practice - keep going!"
+        recommendations = [
+            f"Start with basic {session.topic} concepts",
+            "Use simpler learning materials",
+            "Practice with easier quizzes first"
+        ]
+    
+    return QuizResult(
+        session_id=session_id,
+        topic=session.topic,
+        final_score=session.score,
+        total_questions=len(session.questions),
+        percentage=percentage,
+        feedback=feedback,
+        recommendations=recommendations
+    )
 
 @app.get("/api/health")
 async def health_check():
