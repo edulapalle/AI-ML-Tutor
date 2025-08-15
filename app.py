@@ -39,7 +39,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MILVUS_URI = os.getenv("MILVUS_URI")
 MILVUS_TOKEN = os.getenv("MILVUS_TOKEN")
 NEO4J_URI = os.getenv("NEO4J_URI")
-NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_USER = os.getenv("NEO4J_USERNAME", "neo4j")  # Fixed: using correct env var name
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
@@ -59,10 +59,11 @@ async def lifespan(app: FastAPI):
     print("🚀 Starting AI/ML Educational Platform")
     
     # Test connections
-    if connect_milvus():
+    milvus_status = connect_milvus()
+    if milvus_status:
         print("✅ Milvus connection established")
     else:
-        print("⚠️ Milvus connection failed")
+        print("⚠️ Milvus connection failed - app will run with fallback responses")
     
     if test_neo4j_connection():
         print("✅ Neo4j connection established")
@@ -97,7 +98,7 @@ auth_service = AuthService()
 # ================================= DATA MODELS =================================
 
 # RAG Models
-Intent = Literal["explain", "define", "compare", "related", "next"]
+Intent = Literal["explain", "define", "compare", "related", "next", "blocked", "fallback"]
 
 class ChatRequest(BaseModel):
     message: str
@@ -187,33 +188,7 @@ def test_neo4j_connection() -> bool:
         print(f"❌ Neo4j connection failed: {e}")
         return False
 
-def guardrail_ml_only(text: str) -> tuple[bool, str]:
-    """ML-only content filtering"""
-    t = text.lower().strip()
-    if not t or len(t) < 2:
-        return False, "Empty or too short."
-    
-    # Allow common follow-ups
-    cont = {"yes", "ok", "okay", "continue", "next", "why", "how", "what", "explain", "example"}
-    if t in cont:
-        return True, "Follow-up allowed."
-    
-    # Quick denylist
-    deny = ["recipe", "cooking", "celebrity", "politics", "dating", "religion", "sports betting"]
-    if any(x in t for x in deny):
-        return False, "Out of scope (non-ML)."
-    
-    # Allow ML-related content
-    allow = ["machine learning", "ml", "ai", "deep learning", "neural", "regression", "classification",
-             "clustering", "transformer", "embedding", "vector", "pca", "statistic", "statquest"]
-    if any(x in t for x in allow):
-        return True, "Looks ML-related."
-    
-    # Allow question-like patterns
-    if any(x in t for x in ["what is", "how does", "explain", "difference", "compare", "when to use"]):
-        return True, "Generic question allowed."
-    
-    return True, "Permissive default."
+# Old guardrail function removed - now using advanced LLM-based guardrails from run_gaurdrails.py
 
 def classify_intent(text: str) -> Intent:
     """Classify user intent"""
@@ -590,16 +565,71 @@ async def get_profile(current_user: UserProfile = Depends(get_current_user)):
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_current_user)):
-    """Advanced RAG chat endpoint"""
+    """Advanced RAG chat endpoint with comprehensive data tracking"""
     t0 = time.time()
     
-    # 1) Guardrail
-    allowed, reason = guardrail_ml_only(request.message)
-    if not allowed:
-        raise HTTPException(status_code=400, detail=f"Out of scope: {reason}")
+    # 📊 TRACKING: Log the incoming query
+    print(f"\n{'='*60}")
+    print(f"🔍 USER QUERY RECEIVED:")
+    print(f"   User: {current_user.username} (ID: {current_user.id})")
+    print(f"   Query: {request.message}")
+    print(f"   Age Group: {current_user.age_group}")
+    print(f"   Study Level: {current_user.study_level}")
+    print(f"   Timestamp: {datetime.now().isoformat()}")
+    
+    # 1) Advanced Guardrails
+    from run_gaurdrails import run_guardrails
+    
+    print(f"   🛡️ Running comprehensive guardrails...")
+    guardrail_result = await run_guardrails(
+        request.message,
+        use_llm_scope=True,
+        use_moderation=True
+    )
+    
+    if guardrail_result["allowed"] == False:
+        reason = guardrail_result["reason"]
+        latency = guardrail_result.get("latency_ms", 0)
+        total_latency = int((time.time() - t0) * 1000)
+        print(f"   ❌ GUARDRAIL: Query blocked - {reason} (latency: {latency}ms)")
+        
+        # Return a friendly chat response instead of HTTP error
+        return ChatResponse(
+            answer=reason,
+            citations=[],
+            next_concepts=[],
+            intent="blocked",
+            latency_ms=total_latency
+        )
+    
+    elif guardrail_result["allowed"] == "fallback_llm":
+        # Use fallback LLM with strict ML-only system prompt
+        from run_gaurdrails import fallback_ml_response
+        
+        reason = guardrail_result["reason"]
+        latency = guardrail_result.get("latency_ms", 0)
+        print(f"   🔄 GUARDRAIL: Using fallback LLM - {reason} (latency: {latency}ms)")
+        
+        # Generate response using fallback LLM
+        fallback_answer = fallback_ml_response(request.message, current_user.age_group)
+        total_latency = int((time.time() - t0) * 1000)
+        
+        print(f"   ✅ FALLBACK: Generated {len(fallback_answer)} character response (total latency: {total_latency}ms)")
+        
+        return ChatResponse(
+            answer=fallback_answer,
+            citations=[],
+            next_concepts=[],
+            intent="fallback",
+            latency_ms=total_latency
+        )
+    
+    guardrail_latency = guardrail_result.get("latency_ms", 0)
+    print(f"   ✅ GUARDRAIL: Query allowed - {guardrail_result['reason']} (latency: {guardrail_latency}ms)")
     
     # 2) Intent classification
     intent = classify_intent(request.message)
+    print(f"   🎯 INTENT: {intent}")
     
     # 3) Connect to databases
     if not connect_milvus():
@@ -621,31 +651,74 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
         )
     
     # 4) Retrieval based on intent
+    print(f"\n📚 DATA RETRIEVAL:")
     if intent in ["explain", "define"]:
         # Milvus only - prioritize rich education content
+        print(f"   🔍 Searching rich_ml_education collection...")
         hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=12)
+        print(f"   📊 Retrieved {len(hits)} results from rich_ml_education")
+        
         if len(hits) < 6:
-            # Supplement with YouTube content
-            hits += milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=6)
+            print(f"   🔍 Supplementing with youtube_creator_videos...")
+            youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=6)
+            print(f"   📊 Retrieved {len(youtube_hits)} results from youtube_creator_videos")
+            hits += youtube_hits
     else:
         # Combined search for compare/related/next
-        hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=8)
-        hits += milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=4)
+        print(f"   🔍 Combined search across both collections...")
+        rich_hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=8)
+        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=4)
+        print(f"   📊 Rich education: {len(rich_hits)} results")
+        print(f"   📊 YouTube videos: {len(youtube_hits)} results")
+        hits = rich_hits + youtube_hits
+    
+    print(f"   📈 TOTAL RETRIEVED: {len(hits)} documents")
     
     if not hits:
+        print(f"   ❌ No results found for query")
         raise HTTPException(status_code=404, detail="No results found")
+    
+    # 📊 TRACKING: Log top retrieved concepts
+    print(f"\n🎯 TOP RETRIEVED CONCEPTS:")
+    for i, hit in enumerate(hits[:5], 1):
+        source = hit.get('source', 'unknown')
+        title = hit.get('title', 'No title')[:50]
+        score = hit.get('score', 0)
+        doc_id = hit.get('doc_id', 'unknown')
+        print(f"   {i}. [{source}] {title}... (score: {score:.3f}, id: {doc_id})")
     
     # 5) Graph context for compare/related/next intents
     next_concepts = []
     if request.use_graph and intent in {"compare", "related", "next"}:
+        print(f"\n🌐 NEO4J KNOWLEDGE GRAPH:")
+        print(f"   🔍 Querying for related concepts...")
         next_concepts = neo4j_query_next_concepts(request.message, limit=3)
+        print(f"   📊 Found {len(next_concepts)} related concepts: {[c.get('name', 'Unknown') for c in next_concepts]}")
+    else:
+        print(f"\n🌐 NEO4J: Skipped (intent: {intent}, use_graph: {request.use_graph})")
     
     # 6) Re-rank using LLM
+    print(f"\n🔄 RE-RANKING:")
+    print(f"   📊 Re-ranking {len(hits)} results to top 5...")
     final_contexts = rerank_with_llm(request.message, hits, top_k=5)
+    print(f"   ✅ Final selection: {len(final_contexts)} contexts")
+    
+    # 📊 TRACKING: Log final selected contexts
+    print(f"\n🎯 FINAL SELECTED CONTEXTS:")
+    for i, ctx in enumerate(final_contexts, 1):
+        source = ctx.get('source', 'unknown')
+        title = ctx.get('title', 'No title')[:40]
+        doc_id = ctx.get('doc_id', 'unknown')
+        print(f"   {i}. [{source}] {title}... (id: {doc_id})")
     
     # 7) Generate structured response
+    print(f"\n💭 RESPONSE GENERATION:")
+    print(f"   🎯 Audience: {request.audience}")
+    print(f"   📝 Building structured prompt...")
     prompt = build_prompt(request.audience, request.message, final_contexts, next_concepts)
+    print(f"   🤖 Generating answer with GPT...")
     answer = generate_answer(prompt)
+    print(f"   ✅ Generated {len(answer)} character response")
     
     # 8) Build citations
     citations = []
@@ -660,6 +733,15 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
         ))
     
     latency_ms = int((time.time() - t0) * 1000)
+    
+    # 📊 TRACKING: Final response summary
+    print(f"\n📋 RESPONSE SUMMARY:")
+    print(f"   📝 Answer length: {len(answer)} characters")
+    print(f"   📚 Citations provided: {len(citations)}")
+    print(f"   🔗 Next concepts: {len(next_concepts)}")
+    print(f"   ⏱️ Total latency: {latency_ms}ms")
+    print(f"   💡 Intent processed: {intent}")
+    print(f"{'='*60}\n")
     
     return ChatResponse(
         answer=answer,

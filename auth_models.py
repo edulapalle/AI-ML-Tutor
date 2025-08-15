@@ -1,12 +1,12 @@
 # Authentication models for user registration and login system
-from pydantic import BaseModel, Field, EmailStr, computed_field
+from pydantic import BaseModel, Field, computed_field
 from typing import List, Optional
 from datetime import date, datetime
 
 class UserRegistration(BaseModel):
     """User registration model with comprehensive study-related information"""
     username: str = Field(..., min_length=3, max_length=50, description="Unique username for the user")
-    email: EmailStr = Field(..., description="User's email address for account verification")
+    email: str = Field(..., description="User's email address for account verification")
     password: str = Field(..., min_length=8, description="Secure password for account access")
     date_of_birth: date = Field(..., description="User's date of birth for age-appropriate content")
     topics_of_interest: List[str] = Field(..., description="List of subjects/topics the user is interested in learning")
@@ -17,14 +17,14 @@ class UserRegistration(BaseModel):
 
 class UserLogin(BaseModel):
     """User login model for authentication"""
-    email: EmailStr = Field(..., description="User's email address")
+    email: str = Field(..., description="User's email address")
     password: str = Field(..., description="User's password")
 
 class UserProfile(BaseModel):
     """User profile model for displaying user information"""
     id: str = Field(..., description="Unique user ID")
     username: str = Field(..., description="User's username")
-    email: EmailStr = Field(..., description="User's email address")
+    email: str = Field(..., description="User's email address")
     date_of_birth: date = Field(..., description="User's date of birth")
     topics_of_interest: List[str] = Field(..., description="User's topics of interest")
     current_stage: str = Field(..., description="User's current stage of life")
@@ -71,7 +71,7 @@ class UserSession(BaseModel):
 
 class PasswordReset(BaseModel):
     """Password reset model for account recovery"""
-    email: EmailStr = Field(..., description="User's email address for password reset")
+    email: str = Field(..., description="User's email address for password reset")
 
 class PasswordUpdate(BaseModel):
     """Password update model for changing passwords"""
