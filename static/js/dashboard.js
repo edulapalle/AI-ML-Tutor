@@ -325,23 +325,21 @@ class Dashboard {
             citationDiv.appendChild(titleEl);
             citationDiv.appendChild(sourceEl);
             
-            // Make citation clickable - open URL if available, otherwise bookmark
+            // Make citation clickable - open URL if available, otherwise show choice popup
             citationDiv.addEventListener('click', () => {
-                console.log('🔍 CITATION CLICKED:', citation); // Debug info
-                console.log('🔗 SOURCE URL VALUE:', `"${citation.source_url}"`); // Debug info
-                console.log('📊 SOURCE:', citation.source); // Debug info
-                console.log('📝 KIND:', citation.kind); // Debug info
-                
-                // Debug info logged to console
+                console.log('🔍 CITATION CLICKED:', citation);
+                console.log('🔗 SOURCE URL VALUE:', `"${citation.source_url}"`);
+                console.log('📊 SOURCE:', citation.source);
+                console.log('📝 KIND:', citation.kind);
                 
                 if (citation.source_url && citation.source_url.trim() !== '') {
-                    // Open the actual source URL in a new tab
+                    // Green citations - Open YouTube URL directly
                     console.log('✅ OPENING URL:', citation.source_url);
                     window.open(citation.source_url, '_blank');
                 } else {
-                    // No URL available, bookmark the content instead
-                    console.log('⭐ BOOKMARKING CONTENT:', citation.doc_id, citation.title);
-                    this.starContent(citation.doc_id, citation.title);
+                    // Orange citations - Show choice popup
+                    console.log('🎯 SHOWING CHOICE POPUP FOR:', citation.doc_id, citation.title);
+                    this.showCitationChoicePopup(citation);
                 }
             });
             
@@ -700,6 +698,208 @@ class Dashboard {
                 return `What is ${conceptName}? Please explain with examples.`;
             }
         }
+    }
+
+    showCitationChoicePopup(citation) {
+        // Create popup overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'popup-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        `;
+
+        // Create popup content
+        const popup = document.createElement('div');
+        popup.className = 'citation-choice-popup';
+        popup.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            animation: popupSlideIn 0.3s ease-out;
+        `;
+
+        popup.innerHTML = `
+            <h3 style="margin: 0 0 1rem 0; color: #333; font-size: 1.2rem;">
+                What would you like to do?
+            </h3>
+            <p style="margin: 0 0 2rem 0; color: #666; font-size: 0.95rem;">
+                <strong>${citation.title}</strong><br/>
+                <small>${citation.kind} content</small>
+            </p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button id="viewContentBtn" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    transition: transform 0.2s ease;
+                ">
+                    📖 View Content
+                </button>
+                <button id="bookmarkBtn" style="
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    color: white;
+                    border: none;
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    transition: transform 0.2s ease;
+                ">
+                    ⭐ Bookmark
+                </button>
+            </div>
+            <button id="cancelBtn" style="
+                background: none;
+                border: none;
+                color: #999;
+                margin-top: 1rem;
+                cursor: pointer;
+                font-size: 0.9rem;
+            ">
+                Cancel
+            </button>
+        `;
+
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes popupSlideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-20px) scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        overlay.appendChild(popup);
+        document.body.appendChild(overlay);
+
+        // Add event listeners
+        const viewContentBtn = popup.querySelector('#viewContentBtn');
+        const bookmarkBtn = popup.querySelector('#bookmarkBtn');
+        const cancelBtn = popup.querySelector('#cancelBtn');
+
+        // Hover effects
+        [viewContentBtn, bookmarkBtn].forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                btn.style.transform = 'translateY(-2px)';
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Button actions
+        viewContentBtn.addEventListener('click', () => {
+            console.log('📖 USER CHOSE: View Content');
+            this.closePopup(overlay);
+            this.viewCitationContent(citation);
+        });
+
+        bookmarkBtn.addEventListener('click', () => {
+            console.log('⭐ USER CHOSE: Bookmark');
+            this.closePopup(overlay);
+            this.starContent(citation.doc_id, citation.title);
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            console.log('❌ USER CHOSE: Cancel');
+            this.closePopup(overlay);
+        });
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.closePopup(overlay);
+            }
+        });
+
+        // Close on Escape key
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                this.closePopup(overlay);
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
+    }
+
+    closePopup(overlay) {
+        overlay.style.animation = 'popupSlideOut 0.2s ease-in forwards';
+        setTimeout(() => {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+        }, 200);
+
+        // Add slide out animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes popupSlideOut {
+                from {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+                to {
+                    opacity: 0;
+                    transform: scale(0.9);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    viewCitationContent(citation) {
+        console.log('📖 VIEWING CONTENT FOR:', citation);
+        
+        // Create a smart query to ask about this specific citation
+        const conceptName = citation.title || citation.doc_id.replace(/[_-]/g, ' ');
+        let query;
+        
+        if (citation.kind === 'definition') {
+            query = `What is ${conceptName}? Please provide a detailed definition.`;
+        } else if (citation.kind === 'analogy') {
+            query = `Explain ${conceptName} using analogies and examples.`;
+        } else if (citation.kind === 'example') {
+            query = `Show me practical examples of ${conceptName}.`;
+        } else {
+            query = `Tell me more about ${conceptName}.`;
+        }
+        
+        console.log('💬 GENERATED QUERY FOR CONTENT VIEW:', query);
+        
+        // Set the message in the chat input and send it
+        const messageInput = document.getElementById('message');
+        if (messageInput) {
+            messageInput.value = query;
+            messageInput.focus();
+        }
+        
+        this.sendMessage(query);
+        this.showNotification(`Viewing content: ${conceptName} 📖`);
     }
 
     updateStarCount(count) {
