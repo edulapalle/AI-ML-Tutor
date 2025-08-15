@@ -456,30 +456,47 @@ def supabase_headers():
 
 async def supabase_insert_star(user_id: str, doc_id: str, note: Optional[str]) -> None:
     """Save a starred item for a user"""
+    print(f"🌟 SUPABASE INSERT STAR: user_id={user_id}, doc_id={doc_id}, note={note}")
+    
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        print(f"❌ SUPABASE CONFIG MISSING: URL={bool(SUPABASE_URL)}, KEY={bool(SUPABASE_ANON_KEY)}")
         return
     
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             url = f"{SUPABASE_URL}/rest/v1/user_stars"
+            headers = supabase_headers()
+            print(f"🔗 SUPABASE URL: {url}")
+            print(f"📤 SUPABASE HEADERS: {headers}")
             
             # Check if exists
             check_params = {"user_id": f"eq.{user_id}", "doc_id": f"eq.{doc_id}", "select": "id"}
-            check_response = await client.get(url, headers=supabase_headers(), params=check_params)
+            print(f"🔍 CHECKING EXISTING: {check_params}")
+            check_response = await client.get(url, headers=headers, params=check_params)
+            print(f"📥 CHECK RESPONSE: {check_response.status_code}, {check_response.text}")
+            
             existing = check_response.json()
+            print(f"📋 EXISTING RECORDS: {existing}")
             
             if existing:
                 # Update existing
+                print(f"🔄 UPDATING EXISTING STAR")
                 update_params = {"user_id": f"eq.{user_id}", "doc_id": f"eq.{doc_id}"}
-                payload = {"note": note, "updated_at": "now()"}
-                await client.patch(url, headers=supabase_headers(), json=payload, params=update_params)
+                payload = {"note": note}
+                update_response = await client.patch(url, headers=headers, json=payload, params=update_params)
+                print(f"📥 UPDATE RESPONSE: {update_response.status_code}, {update_response.text}")
             else:
                 # Insert new
-                payload = {"user_id": user_id, "doc_id": doc_id, "note": note, "created_at": "now()"}
-                await client.post(url, headers=supabase_headers(), json=payload, params={"return": "minimal"})
+                print(f"➕ INSERTING NEW STAR")
+                payload = {"user_id": user_id, "doc_id": doc_id, "note": note}
+                print(f"📤 INSERT PAYLOAD: {payload}")
+                insert_response = await client.post(url, headers=headers, json=payload)
+                print(f"📥 INSERT RESPONSE: {insert_response.status_code}, {insert_response.text}")
                 
     except Exception as e:
         print(f"❌ Supabase insert star failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 async def supabase_select_stars(user_id: str) -> List[StarRecord]:
     """Get all starred items for a user"""
@@ -655,14 +672,15 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
     if intent in ["explain", "define"]:
         # Milvus only - prioritize rich education content
         print(f"   🔍 Searching rich_ml_education collection...")
-        hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=12)
-        print(f"   📊 Retrieved {len(hits)} results from rich_ml_education")
+        rich_hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=8)
+        print(f"   📊 Retrieved {len(rich_hits)} results from rich_ml_education")
         
-        if len(hits) < 6:
-            print(f"   🔍 Supplementing with youtube_creator_videos...")
-            youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=6)
-            print(f"   📊 Retrieved {len(youtube_hits)} results from youtube_creator_videos")
-            hits += youtube_hits
+        print(f"   🔍 Searching youtube_creator_videos collection...")
+        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=4)
+        print(f"   📊 Retrieved {len(youtube_hits)} results from youtube_creator_videos")
+        
+        # Combine results (rich education first, then YouTube)
+        hits = rich_hits + youtube_hits
     else:
         # Combined search for compare/related/next
         print(f"   🔍 Combined search across both collections...")
@@ -754,8 +772,14 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
 @app.post("/api/star")
 async def star_content(request: StarRequest, current_user: UserProfile = Depends(get_current_user)):
     """Star/bookmark content"""
-    await supabase_insert_star(current_user.id, request.doc_id, request.note)
-    return {"message": "Content starred successfully"}
+    print(f"🌟 STAR REQUEST: user={current_user.username} (id={current_user.id}), doc_id={request.doc_id}, note={request.note}")
+    try:
+        await supabase_insert_star(current_user.id, request.doc_id, request.note)
+        print(f"✅ STAR SUCCESS: Content starred for user {current_user.username}")
+        return {"message": "Content starred successfully"}
+    except Exception as e:
+        print(f"❌ STAR FAILED: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to star content: {str(e)}")
 
 @app.get("/api/stars", response_model=List[StarRecord])
 async def get_stars(current_user: UserProfile = Depends(get_current_user)):

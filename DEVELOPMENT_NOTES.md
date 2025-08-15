@@ -2,7 +2,53 @@
 
 **Project**: AI Bootcamp Capstone Project  
 **Author**: Santosh Edulapalle  
-**Last Updated**: August 13, 2025
+**Last Updated**: August 14, 2025
+
+---
+
+## 📅 August 14, 2025
+
+### 🎯 **CITATION LINKS & GUARDRAILS FIXED: Complete User Experience**
+**Time**: 8:55 PM  
+**Status**: ✅ **COMPLETED**
+
+#### **Critical Bug Fixes:**
+1. **🔧 OpenAI Async Method Issue RESOLVED**:
+   - **Problem**: `'Completions' object has no attribute 'acreate'` / `'Moderations' object has no attribute 'acreate'`
+   - **Root Cause**: OpenAI client methods are synchronous, not asynchronous 
+   - **Solution**: Removed `async`/`await` from all OpenAI calls in `run_gaurdrails.py` and `app.py`
+   - **Impact**: Guardrail system now fully functional
+
+2. **🔗 Citation Click Behavior FIXED**:
+   - **Problem**: Citations showing "Content bookmarked" popup instead of opening source URLs
+   - **Root Cause**: Click handler only called `starContent()` regardless of URL availability
+   - **Solution**: Smart click handler - opens `source_url` if available, otherwise bookmarks content
+   - **Enhancement**: Added visual indicators (🔗 for links, ⭐ for bookmarkable content)
+
+#### **User Experience Improvements:**
+- **✅ ML Questions**: Now get proper responses with working citation links
+- **✅ Citation Links**: Open YouTube videos and external resources in new tabs
+- **✅ Citation Bookmarks**: Internal content gets bookmarked when clicked
+- **✅ Visual Distinction**: Color-coded borders (green for links, orange for bookmarks)
+- **✅ Hover Effects**: Smooth animations and visual feedback
+
+#### **Technical Implementation:**
+```javascript
+// Smart citation click handler
+citationDiv.addEventListener('click', () => {
+    if (citation.source_url && citation.source_url.trim() !== '') {
+        window.open(citation.source_url, '_blank');  // Open URL
+    } else {
+        this.starContent(citation.doc_id, citation.title);  // Bookmark
+    }
+});
+```
+
+#### **Files Modified:**
+- `run_gaurdrails.py` - Fixed OpenAI async calls
+- `app.py` - Removed await from fallback_ml_response call  
+- `static/js/dashboard.js` - Enhanced citation click handling
+- `static/css/dashboard.css` - Added visual styling for citation types
 
 ---
 

@@ -490,6 +490,32 @@ body {
     border-radius: 8px;
     margin: 0.3rem 0;
     border: 1px solid rgba(102, 126, 234, 0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.citation:hover {
+    background: rgba(255, 255, 255, 0.8);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.citation-link {
+    border-left: 3px solid #4CAF50;
+}
+
+.citation-link:hover {
+    border-left-color: #45a049;
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.citation-bookmark {
+    border-left: 3px solid #FF9800;
+}
+
+.citation-bookmark:hover {
+    border-left-color: #f57c00;
+    background: rgba(255, 152, 0, 0.1);
 }
 
 .citation-title {

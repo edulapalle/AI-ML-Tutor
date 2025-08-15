@@ -298,7 +298,8 @@ class Dashboard {
 
         citations.forEach(citation => {
             const citationDiv = document.createElement('div');
-            citationDiv.className = 'citation';
+            const hasUrl = citation.source_url && citation.source_url.trim() !== '';
+            citationDiv.className = hasUrl ? 'citation citation-link' : 'citation citation-bookmark';
             
             const titleEl = document.createElement('div');
             titleEl.className = 'citation-title';
@@ -306,14 +307,30 @@ class Dashboard {
             
             const sourceEl = document.createElement('div');
             sourceEl.className = 'citation-source';
-            sourceEl.textContent = `${citation.source || 'Unknown'} (${citation.kind || 'content'})`;
+            const actionIcon = hasUrl ? '🔗' : '⭐';
+            sourceEl.textContent = `${actionIcon} ${citation.source || 'Unknown'} (${citation.kind || 'content'})`;
             
             citationDiv.appendChild(titleEl);
             citationDiv.appendChild(sourceEl);
             
-            // Make citation clickable to star it
+            // Make citation clickable - open URL if available, otherwise bookmark
             citationDiv.addEventListener('click', () => {
-                this.starContent(citation.doc_id, citation.title);
+                console.log('🔍 CITATION CLICKED:', citation); // Debug info
+                console.log('🔗 SOURCE URL VALUE:', `"${citation.source_url}"`); // Debug info
+                console.log('📊 SOURCE:', citation.source); // Debug info
+                console.log('📝 KIND:', citation.kind); // Debug info
+                
+                // Debug info logged to console
+                
+                if (citation.source_url && citation.source_url.trim() !== '') {
+                    // Open the actual source URL in a new tab
+                    console.log('✅ OPENING URL:', citation.source_url);
+                    window.open(citation.source_url, '_blank');
+                } else {
+                    // No URL available, bookmark the content instead
+                    console.log('⭐ BOOKMARKING CONTENT:', citation.doc_id, citation.title);
+                    this.starContent(citation.doc_id, citation.title);
+                }
             });
             
             citationsDiv.appendChild(citationDiv);
@@ -433,48 +450,69 @@ class Dashboard {
 
     async starContent(docId, title, note = '') {
         try {
+            console.log('🌟 STARRING CONTENT:', {docId, title, note});
             const token = this.getAuthToken();
+            console.log('🔑 AUTH TOKEN:', token ? 'Present' : 'Missing');
+            
+            const payload = {
+                doc_id: docId,
+                note: note || `Starred: ${title}`
+            };
+            console.log('📤 STAR PAYLOAD:', payload);
+            
             const response = await fetch('/api/star', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    doc_id: docId,
-                    note: note || `Starred: ${title}`
-                })
+                body: JSON.stringify(payload)
             });
 
+            console.log('📥 STAR RESPONSE:', response.status, response.statusText);
+            
             if (response.ok) {
+                const result = await response.json();
+                console.log('✅ STAR SUCCESS:', result);
                 this.showNotification('Content bookmarked! ⭐');
                 await this.loadStars();
             } else {
-                throw new Error('Failed to star content');
+                const error = await response.text();
+                console.error('❌ STAR FAILED:', response.status, error);
+                throw new Error(`Failed to star content: ${response.status}`);
             }
         } catch (error) {
-            console.error('Star error:', error);
+            console.error('⚠️ STAR ERROR:', error);
             this.showNotification('Failed to bookmark content ❌');
         }
     }
 
     async loadStars() {
         try {
+            console.log('⭐ LOADING STARS...');
             const token = this.getAuthToken();
+            console.log('🔑 AUTH TOKEN for stars:', token ? 'Present' : 'Missing');
+            
             const response = await fetch('/api/stars', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
 
+            console.log('📥 STARS RESPONSE:', response.status, response.statusText);
+
             if (response.ok) {
                 const stars = await response.json();
+                console.log('✅ STARS LOADED:', stars.length, 'items:', stars);
                 this.updateStarCount(stars.length);
                 this.updateStarsList(stars);
                 return stars;
+            } else {
+                const error = await response.text();
+                console.error('❌ STARS LOAD FAILED:', response.status, error);
             }
         } catch (error) {
-            console.error('Load stars error:', error);
+            console.error('⚠️ LOAD STARS ERROR:', error);
         }
         return [];
     }
