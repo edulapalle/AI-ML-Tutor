@@ -353,48 +353,195 @@ def milvus_search(collection_name: str, query: str, top_k: int = 12) -> List[Dic
         print(f"❌ Milvus search failed for {collection_name}: {e}")
         return []
 
-def neo4j_query_next_concepts(concept_or_query: str, limit: int = 3) -> List[str]:
-    """Get next concepts from Neo4j knowledge graph"""
+def extract_topic_from_question(question: str) -> str:
+    """Extract main topic from user's question using simple keyword matching"""
+    import re
+    
+    # Common ML/AI topics and patterns
+    ml_topics = {
+        'machine learning': ['machine learning', 'ml'],
+        'deep learning': ['deep learning', 'neural network', 'neural net'],
+        'natural language processing': ['nlp', 'natural language', 'text processing'],
+        'computer vision': ['computer vision', 'image recognition', 'cv'],
+        'reinforcement learning': ['reinforcement learning', 'rl'],
+        'supervised learning': ['supervised learning', 'classification', 'regression'],
+        'unsupervised learning': ['unsupervised learning', 'clustering', 'dimensionality reduction'],
+        'neural networks': ['neural network', 'neuron', 'activation function'],
+        'convolutional neural networks': ['cnn', 'convolutional', 'convolution'],
+        'recurrent neural networks': ['rnn', 'lstm', 'gru', 'recurrent'],
+        'transformers': ['transformer', 'attention', 'bert', 'gpt'],
+        'gradient descent': ['gradient descent', 'optimization', 'backpropagation'],
+        'overfitting': ['overfitting', 'underfitting', 'regularization'],
+        'data preprocessing': ['preprocessing', 'data cleaning', 'feature engineering'],
+        'model evaluation': ['evaluation', 'accuracy', 'precision', 'recall', 'f1'],
+        'cross validation': ['cross validation', 'validation', 'train test split'],
+        'ensemble methods': ['ensemble', 'random forest', 'bagging', 'boosting'],
+        'support vector machines': ['svm', 'support vector'],
+        'decision trees': ['decision tree', 'random forest'],
+        'linear regression': ['linear regression', 'logistic regression'],
+        'clustering': ['clustering', 'kmeans', 'hierarchical'],
+        'pca': ['pca', 'principal component']
+    }
+    
+    question_lower = question.lower()
+    
+    # Find matching topics
+    for topic, keywords in ml_topics.items():
+        for keyword in keywords:
+            if keyword in question_lower:
+                return topic
+    
+    # If no specific match, try to extract general concepts
+    tech_words = re.findall(r'\b(?:algorithm|model|training|prediction|data|learning|neural|network|deep|machine|ai|artificial|intelligence)\b', question_lower)
+    if tech_words:
+        return ' '.join(tech_words[:2])  # Take first 2 technical words
+    
+    # Fallback: if question contains "what is" or similar, extract the main concept
+    what_patterns = [
+        r'what is (\w+(?:\s+\w+)*)',
+        r'tell me about (\w+(?:\s+\w+)*)',
+        r'explain (\w+(?:\s+\w+)*)',
+        r'how does (\w+(?:\s+\w+)*)',
+        r'(\w+(?:\s+\w+)*) work'
+    ]
+    
+    for pattern in what_patterns:
+        match = re.search(pattern, question_lower)
+        if match:
+            concept = match.group(1).strip()
+            # Only return if it's likely to be ML-related
+            if any(word in concept for word in ['learning', 'network', 'algorithm', 'model', 'data', 'ai', 'intelligence']):
+                return concept
+    
+    # Last resort: if question has ML keywords, return a generic topic
+    if any(keyword in question_lower for keyword in ['learn', 'model', 'algorithm', 'data', 'ai', 'ml']):
+        return 'machine learning'
+    
+    return None
+
+async def store_user_topic(user_id: str, topic: str):
+    """Store a topic in user's learning path"""
     try:
-        if not NEO4J_URI or not NEO4J_PASSWORD:
+        if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+            print(f"   ❌ Supabase config missing")
+            return
+        
+        async with httpx.AsyncClient(timeout=10) as client:
+            url = f"{SUPABASE_URL}/rest/v1/user_learning_path"
+            headers = supabase_headers()
+            
+            # Check if topic already exists for this user
+            check_params = {"user_id": f"eq.{user_id}", "topic": f"eq.{topic}", "select": "id"}
+            check_response = await client.get(url, headers=headers, params=check_params)
+            
+            if check_response.status_code == 200 and check_response.json():
+                # Update existing topic timestamp
+                update_params = {"user_id": f"eq.{user_id}", "topic": f"eq.{topic}"}
+                payload = {"explored_at": "now()"}
+                await client.patch(url, headers=headers, json=payload, params=update_params)
+                print(f"   🔄 Updated existing topic timestamp: {topic}")
+            elif check_response.status_code == 404:
+                print(f"   📝 Table doesn't exist - learning path storage disabled for now")
+                return
+            else:
+                # Insert new topic
+                payload = {"user_id": user_id, "topic": topic, "explored_at": "now()"}
+                insert_response = await client.post(url, headers=headers, json=payload)
+                if insert_response.status_code in [200, 201]:
+                    print(f"   ✅ Added new topic to learning path: {topic}")
+                elif insert_response.status_code == 404:
+                    print(f"   📝 Table doesn't exist - learning path storage disabled for now")
+                else:
+                    print(f"   ❌ Failed to insert topic: {insert_response.status_code}")
+            
+    except Exception as e:
+        print(f"   ❌ Failed to store topic: {e}")
+
+async def get_user_learning_path(user_id: str) -> List[str]:
+    """Get user's learning path topics"""
+    try:
+        if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+            print(f"   ❌ Supabase config missing")
             return []
         
-        uri = NEO4J_URI
-        if uri.startswith("neo4j+s://"):
-            uri = uri.replace("neo4j+s://", "bolt+s://")
-        
-        driver = GraphDatabase.driver(uri, auth=(NEO4J_USER, NEO4J_PASSWORD))
-        
-        with driver.session() as session:
-            # Try direct concept match
-            cypher = """
-            MATCH (c:Concept)-[:REQUIRES|RELATES_TO|CONTRASTS_WITH]->(n:Concept)
-            WHERE toLower(c.name) CONTAINS toLower($q) OR toLower(c.slug) CONTAINS toLower($q)
-            RETURN DISTINCT n.name AS name
-            LIMIT $lim
-            """
+        async with httpx.AsyncClient(timeout=10) as client:
+            url = f"{SUPABASE_URL}/rest/v1/user_learning_path"
+            headers = supabase_headers()
+            params = {
+                "user_id": f"eq.{user_id}",
+                "select": "topic",
+                "order": "explored_at.desc",
+                "limit": 10
+            }
             
-            result = session.run(cypher, q=concept_or_query, lim=limit)
-            concepts = [record["name"] for record in result]
+            response = await client.get(url, headers=headers, params=params)
             
-            # If no matches, try video connections
-            if not concepts:
-                cypher2 = """
-                MATCH (v:Video)-[:COVERS]->(c:Concept)-[:REQUIRES|RELATES_TO]->(n:Concept)
-                WHERE toLower(v.title) CONTAINS toLower($q)
-                RETURN DISTINCT n.name AS name
-                LIMIT $lim
-                """
-                
-                result = session.run(cypher2, q=concept_or_query, lim=limit)
-                concepts = [record["name"] for record in result]
-        
-        driver.close()
-        return concepts
+            if response.status_code == 200:
+                data = response.json()
+                topics = [row["topic"] for row in data]
+                print(f"   📚 Retrieved {len(topics)} topics from user's path: {topics}")
+                return topics
+            else:
+                print(f"   ❌ Failed to get learning path: {response.status_code}")
+                if response.status_code == 404:
+                    print(f"   📝 Table likely doesn't exist - this is normal for new setups")
+                return []
         
     except Exception as e:
-        print(f"❌ Neo4j query failed: {e}")
+        print(f"   ❌ Failed to get learning path: {e}")
         return []
+
+def generate_next_concepts_from_path(user_topics: List[str], current_topic: str = None) -> List[str]:
+    """Generate next learning concepts based on user's learning path"""
+    
+    # Learning progression map
+    learning_map = {
+        'machine learning': ['supervised learning', 'unsupervised learning', 'model evaluation'],
+        'supervised learning': ['linear regression', 'decision trees', 'neural networks'],
+        'unsupervised learning': ['clustering', 'pca', 'dimensionality reduction'],
+        'neural networks': ['deep learning', 'convolutional neural networks', 'recurrent neural networks'],
+        'deep learning': ['convolutional neural networks', 'recurrent neural networks', 'transformers'],
+        'convolutional neural networks': ['computer vision', 'image recognition', 'transfer learning'],
+        'recurrent neural networks': ['natural language processing', 'sequence modeling', 'lstm'],
+        'transformers': ['bert', 'gpt', 'attention mechanisms'],
+        'natural language processing': ['transformers', 'word embeddings', 'sentiment analysis'],
+        'computer vision': ['convolutional neural networks', 'object detection', 'image segmentation'],
+        'model evaluation': ['cross validation', 'overfitting', 'performance metrics'],
+        'gradient descent': ['optimization', 'learning rate', 'momentum'],
+        'overfitting': ['regularization', 'dropout', 'early stopping']
+    }
+    
+    next_concepts = []
+    
+    # If user has a current topic, suggest natural progressions
+    if current_topic and current_topic in learning_map:
+        next_concepts.extend(learning_map[current_topic])
+    
+    # Look at user's recent topics and suggest related concepts
+    for topic in user_topics[:5]:  # Last 5 topics
+        if topic in learning_map:
+            for concept in learning_map[topic]:
+                if concept not in user_topics and concept not in next_concepts:
+                    next_concepts.append(concept)
+    
+    # If no specific suggestions, provide foundational topics
+    if not next_concepts:
+        # Starter topics for new users
+        if not user_topics:  # Completely new user
+            foundational = [
+                'machine learning basics', 
+                'what is artificial intelligence', 
+                'data and algorithms',
+                'supervised vs unsupervised learning',
+                'neural networks introduction'
+            ]
+        else:
+            # User has some topics but no specific progressions
+            foundational = ['machine learning', 'supervised learning', 'neural networks', 'model evaluation', 'data preprocessing']
+        
+        next_concepts = [topic for topic in foundational if topic not in user_topics]
+    
+    return next_concepts[:3]  # Return top 3 suggestions
 
 def rerank_with_llm(question: str, items: List[Dict], top_k: int = 5) -> List[Dict]:
     """Re-rank results using LLM"""
@@ -537,12 +684,14 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
         
     elif intent == "quiz":
         structure = (
-            "Create an interactive learning experience with:\n"
-            "1) Quick knowledge check question\n"
-            "2) Key concepts to remember\n"
-            "3) Common mistakes to avoid\n"
-            "4) Think about: discussion prompt\n"
-            "5) Practice suggestion for deeper learning"
+            "I'd love to quiz you! However, I work best with interactive quizzes through the dedicated quiz feature.\n\n"
+            "Here's how to get started:\n"
+            "1) Look for the 'Quiz' button in the interface, or\n"
+            "2) Use the quiz endpoints if you're using the API directly\n"
+            "3) Choose your topic and difficulty level\n"
+            "4) Get immediate feedback on each question\n\n"
+            "For now, I can provide some quick study questions based on the content available, but for a full interactive quiz experience, please use the quiz feature!\n\n"
+            "Quick study questions based on your topic:"
         )
         
     else:  # fallback for any other intent
@@ -1067,15 +1216,23 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
         doc_id = hit.get('doc_id', 'unknown')
         print(f"   {i}. [{source}] {title}... (score: {score:.3f}, id: {doc_id})")
     
-    # 5) Graph context for compare/related/next intents
+    # 5) Dynamic Learning Path - Extract topic from user question
+    print(f"\n🌱 DYNAMIC LEARNING PATH:")
+    print(f"   📝 User question: '{request.message}'")
+    extracted_topic = extract_topic_from_question(request.message)
+    print(f"   🔍 Extracted topic: {extracted_topic}")
+    
+    # Store topic in user's learning path
+    if extracted_topic and current_user:
+        await store_user_topic(current_user.id, extracted_topic)
+        print(f"   💾 Stored topic for user: {current_user.id}")
+    
+    # Get user's learning path for next concepts
     next_concepts = []
-    if request.use_graph and intent in {"compare", "related", "next", "examples"}:
-        print(f"\n🌐 NEO4J KNOWLEDGE GRAPH:")
-        print(f"   🔍 Querying for related concepts...")
-        next_concepts = neo4j_query_next_concepts(request.message, limit=3)
-        print(f"   📊 Found {len(next_concepts)} related concepts: {[c.get('name', 'Unknown') for c in next_concepts]}")
-    else:
-        print(f"\n🌐 NEO4J: Skipped (intent: {intent}, use_graph: {request.use_graph})")
+    if current_user:
+        user_topics = await get_user_learning_path(current_user.id)
+        next_concepts = generate_next_concepts_from_path(user_topics, extracted_topic)
+        print(f"   📈 Generated {len(next_concepts)} next concepts from user's path")
     
     # 6) Re-rank using LLM
     print(f"\n🔄 RE-RANKING:")
@@ -1300,10 +1457,31 @@ async def get_bookmark_content(doc_id: str, current_user: UserProfile = Depends(
         raise HTTPException(status_code=500, detail=f"Failed to retrieve bookmark content: {str(e)}")
 
 @app.get("/api/next")
-async def get_next_concepts(concept: str = Query(...), limit: int = 3):
-    """Get next learning concepts"""
-    next_concepts = neo4j_query_next_concepts(concept, limit)
-    return {"concept": concept, "next_concepts": next_concepts}
+async def get_next_concepts(concept: str = Query(...), limit: int = 3, current_user: UserProfile = Depends(get_current_user)):
+    """Get next learning concepts based on user's dynamic learning path"""
+    user_topics = await get_user_learning_path(current_user.id)
+    next_concepts = generate_next_concepts_from_path(user_topics, concept)
+    return {"concept": concept, "next_concepts": next_concepts[:limit]}
+
+@app.get("/api/learning-path")
+async def get_learning_path(current_user: UserProfile = Depends(get_current_user)):
+    """Get user's complete learning path"""
+    try:
+        user_topics = await get_user_learning_path(current_user.id)
+        next_suggestions = generate_next_concepts_from_path(user_topics)
+        
+        return {
+            "explored_topics": user_topics,
+            "suggested_next": next_suggestions,
+            "total_topics": len(user_topics)
+        }
+    except Exception as e:
+        print(f"❌ Failed to get learning path: {e}")
+        return {
+            "explored_topics": [],
+            "suggested_next": ["machine learning basics", "what is artificial intelligence", "data and algorithms"],
+            "total_topics": 0
+        }
 
 # ================================= QUIZ ENDPOINTS =================================
 

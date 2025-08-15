@@ -76,30 +76,7 @@
                 </div>
             </div>
 
-            <div class="sidebar-section">
-                <h3><i class="fas fa-lightbulb"></i> Quick Actions</h3>
-                <div class="quick-actions">
-                    <button class="quick-action" data-question="What is machine learning?">
-                        <i class="fas fa-question-circle"></i>
-                        <span>Start Learning</span>
-                    </button>
-                    
-                    <button class="quick-action" data-question="Quiz me on what I've learned">
-                        <i class="fas fa-brain"></i>
-                        <span>Quiz Me</span>
-                    </button>
-                    
-                    <button class="quick-action" data-question="What should I learn next?">
-                        <i class="fas fa-arrow-right"></i>
-                        <span>What's Next?</span>
-                    </button>
-                    
-                    <button class="quick-action" data-question="Compare supervised vs unsupervised learning">
-                        <i class="fas fa-balance-scale"></i>
-                        <span>Compare Topics</span>
-                    </button>
-                </div>
-            </div>
+
 
             <div class="sidebar-section">
                 <h3><i class="fas fa-chart-line"></i> System Status</h3>
@@ -188,16 +165,20 @@
             </div>
         </main>
 
-        <!-- Learning Path Panel (Collapsible) -->
+        <!-- Learning History Panel -->
         <aside class="learning-panel" id="learningPanel">
             <div class="panel-header">
-                <h3><i class="fas fa-route"></i> Learning Path</h3>
-                <button class="panel-toggle" id="panelToggle">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
+                <h3><i class="fas fa-graduation-cap"></i> Learning Panel</h3>
             </div>
             
             <div class="panel-content">
+                <div class="learning-history" id="learningHistoryContent">
+                    <h4>Your Explored Topics:</h4>
+                    <div class="history-list" id="historyList">
+                        <p class="no-history">Start chatting to build your learning history!</p>
+                    </div>
+                </div>
+                
                 <div class="next-concepts" id="nextConcepts">
                     <h4>Suggested Next Topics:</h4>
                     <div class="concepts-list">

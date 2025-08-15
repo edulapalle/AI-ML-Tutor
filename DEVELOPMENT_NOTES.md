@@ -2,7 +2,43 @@
 
 **Project**: AI Bootcamp Capstone Project  
 **Author**: Santosh Edulapalle  
-**Last Updated**: August 14, 2025
+**Last Updated**: August 15, 2025
+
+---
+
+## 📅 August 15, 2025
+
+### 🔄 **Major UI Refactor: Fixed Learning Path Panel** *(2:00 PM)*
+
+**Issue**: User reported confusing Learning Path sidebar with collapsible arrow that just shrunk without functionality.
+
+**✅ Changes Made**:
+- **Removed**: Problematic toggle/arrow functionality that just collapsed the panel
+- **Added**: Learning History section showing user's explored topics from backend  
+- **Kept**: "Suggested Next Topics" functionality (originally mistakenly removed)
+- **Files Updated**:
+  - `templates/dashboard.html`: Removed toggle button, added Learning History + kept Next Concepts
+  - `static/js/dashboard.js`: Removed toggle code, added history functions, kept concept updates
+  - `static/css/dashboard.css`: Removed toggle styles, added history styles, kept concept styles
+- **Backend Integration**: Uses existing `/api/learning-path` endpoint to show `explored_topics`
+- **Design**: Full-length sidebar with both history (green) and suggestions (blue), scrollable lists
+
+**🎯 Result**: Clean Learning Panel with both user's explored topics AND suggested next topics - no broken toggle functionality.
+
+### 🗑️ **Removed Quick Actions Section** *(2:30 PM)*
+
+**Issue**: User reported Quick Actions section was causing more trouble than helping.
+
+**✅ Changes Made**:
+- **Removed**: Entire Quick Actions section from dashboard sidebar (line 79-102)
+- **Cleaned up**: Associated CSS styles (.quick-actions, .quick-action)
+- **Removed**: JavaScript `initQuickActions()` function and its initialization call
+- **Files Updated**:
+  - `templates/dashboard.html`: Removed Quick Actions div block
+  - `static/css/dashboard.css`: Removed quick-action styling
+  - `static/js/dashboard.js`: Removed initQuickActions function
+
+**🎯 Result**: Cleaner sidebar without problematic quick action buttons, more focus on learning history and suggestions.
 
 ---
 

@@ -28,12 +28,13 @@ class Dashboard {
             
             // Initialize UI components
             this.initEventListeners();
-            this.initQuickActions();
+
             this.initModals();
             
             // Load user data and populate UI
             await this.loadUserProfile();
             await this.loadStars();
+            await this.updateLearningHistory();
             await this.checkSystemHealth();
             
             console.log('Dashboard initialized successfully');
@@ -226,7 +227,8 @@ class Dashboard {
                 { role: 'assistant', content: data.answer }
             );
 
-            // Update learning panel with next concepts
+            // Update learning history and suggested concepts
+            this.updateLearningHistory();
             this.updateNextConcepts(data.next_concepts);
 
         } catch (error) {
@@ -1123,13 +1125,68 @@ class Dashboard {
         return [];
     }
 
+    async updateLearningHistory() {
+        try {
+            const response = await fetch('/api/learning-path', {
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayLearningHistory(data.explored_topics || []);
+            }
+        } catch (error) {
+            console.error('Failed to load learning history:', error);
+        }
+    }
+
+    displayLearningHistory(topics) {
+        const historyList = document.getElementById('historyList');
+        if (!historyList) return;
+
+        historyList.innerHTML = '';
+        
+        if (topics.length === 0) {
+            historyList.innerHTML = '<p class="no-history">Start chatting to build your learning history!</p>';
+            return;
+        }
+
+        // Show most recent topics first
+        topics.slice(0, 10).forEach((topic, index) => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            
+            const timeAgo = index === 0 ? 'Just now' : 
+                           index === 1 ? 'A moment ago' : 
+                           index < 5 ? 'Recently' : 'Earlier';
+            
+            historyItem.innerHTML = `
+                <div class="history-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="history-content">
+                    <div class="history-title">${this.escapeHtml(topic)}</div>
+                    <div class="history-timestamp">${timeAgo}</div>
+                </div>
+            `;
+            
+            historyItem.addEventListener('click', () => {
+                this.sendMessage(`Tell me more about ${topic}`);
+            });
+            
+            historyList.appendChild(historyItem);
+        });
+    }
+
     updateNextConcepts(concepts) {
         const conceptsList = document.querySelector('.concepts-list');
         if (!conceptsList) return;
 
         conceptsList.innerHTML = '';
         
-        if (concepts.length === 0) {
+        if (!concepts || concepts.length === 0) {
             conceptsList.innerHTML = '<p style="color: #999; font-style: italic;">No suggestions yet</p>';
             return;
         }
@@ -1137,7 +1194,7 @@ class Dashboard {
         concepts.forEach(concept => {
             const conceptItem = document.createElement('div');
             conceptItem.className = 'concept-item';
-            conceptItem.innerHTML = `<div class="concept-name">${concept}</div>`;
+            conceptItem.innerHTML = `<div class="concept-name">${this.escapeHtml(concept)}</div>`;
             conceptItem.addEventListener('click', () => {
                 this.sendMessage(`Tell me about ${concept}`);
             });
@@ -1231,32 +1288,10 @@ class Dashboard {
             exportChatBtn.addEventListener('click', () => this.exportChat());
         }
 
-        // Learning panel toggle
-        const panelToggle = document.getElementById('panelToggle');
-        const learningPanel = document.getElementById('learningPanel');
-
-        if (panelToggle && learningPanel) {
-            panelToggle.addEventListener('click', () => {
-                learningPanel.classList.toggle('collapsed');
-            });
-        }
+        // Learning History Panel - no toggle needed, always visible
     }
 
-    initQuickActions() {
-        const quickActions = document.querySelectorAll('.quick-action');
-        quickActions.forEach(action => {
-            action.addEventListener('click', () => {
-                const question = action.getAttribute('data-question');
-                if (question) {
-                    const chatInput = document.getElementById('chatInput');
-                    if (chatInput) {
-                        chatInput.value = question;
-                        chatInput.focus();
-                    }
-                }
-            });
-        });
-    }
+
 
     initModals() {
         // Stars modal

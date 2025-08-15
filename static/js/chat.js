@@ -4,6 +4,7 @@ class ChatApp {
         this.conversationHistory = [];
         this.isLoading = false;
         this.userData = window.userData || {};
+        this.currentQuizSession = null; // Track active quiz session
         this.init();
     }
 
@@ -17,6 +18,7 @@ class ChatApp {
         this.loadSettings();
         this.checkHealth();
         this.autoResizeTextarea();
+        this.loadLearningHistory();
         this.initUserMenu();
         this.initQuickActions();
 
@@ -80,8 +82,13 @@ class ChatApp {
             button.addEventListener('click', () => {
                 const question = button.dataset.question;
                 if (question) {
-                    document.getElementById('messageInput').value = question;
-                    this.sendMessage();
+                    // Check if this is a quiz request
+                    if (question.toLowerCase().includes('quiz')) {
+                        this.startQuiz();
+                    } else {
+                        document.getElementById('messageInput').value = question;
+                        this.sendMessage();
+                    }
                 }
             });
         });
@@ -148,6 +155,9 @@ class ChatApp {
                 
                 // Update sources
                 this.updateSources(data.sources);
+                
+                // Refresh learning history to show new explored topics
+                this.loadLearningHistory();
             } else {
                 this.addMessageToChat('assistant', `Error: ${data.detail || 'Failed to get response'}`);
             }
@@ -444,14 +454,287 @@ class ChatApp {
         }
     }
 
+    // Function removed - replaced with learning history functionality
+    
+    async loadLearningHistory() {
+        try {
+            const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+            if (!token) return;
+
+            const response = await fetch('/api/learning-path', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayLearningHistory(data);
+                console.log(`📚 Loaded learning history: ${data.explored_topics?.length || 0} topics explored`);
+            }
+        } catch (error) {
+            console.error('❌ Failed to load learning history:', error);
+        }
+    }
+    
+    displayLearningHistory(historyData) {
+        const learningHistorySection = document.getElementById('learningHistorySection');
+        const learningHistoryList = document.getElementById('learningHistoryList');
+        
+        if (!learningHistorySection || !learningHistoryList) {
+            return;
+        }
+        
+        // Clear existing content
+        learningHistoryList.innerHTML = '';
+        
+        // Display explored topics from history
+        if (historyData.explored_topics && historyData.explored_topics.length > 0) {
+            historyData.explored_topics.forEach((topic, index) => {
+                const historyItem = this.createHistoryItem(topic, index);
+                learningHistoryList.appendChild(historyItem);
+            });
+        } else {
+            // Show empty state
+            learningHistoryList.innerHTML = `
+                <div class="no-history">
+                    <i class="fas fa-lightbulb" style="color: #a0aec0; margin-right: 0.5rem;"></i>
+                    Start chatting to build your learning history!
+                </div>
+            `;
+        }
+    }
+    
+    createHistoryItem(topic, index) {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'learning-history-item';
+        historyItem.onclick = () => this.askAboutConcept(topic);
+        
+        // Create a relative timestamp (this is simplified - in real implementation you'd use actual timestamps)
+        const timeAgo = index === 0 ? 'Just now' : 
+                       index === 1 ? 'A moment ago' : 
+                       index < 5 ? 'Recently' : 'Earlier';
+        
+        historyItem.innerHTML = `
+            <div class="history-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="history-content">
+                <div class="history-title">${this.escapeHtml(topic)}</div>
+                <div class="history-timestamp">${timeAgo}</div>
+            </div>
+        `;
+        
+        return historyItem;
+    }
+
+    askAboutConcept(concept) {
+        const conceptName = typeof concept === 'string' ? concept : (concept.name || concept.title || String(concept));
+        const message = `Tell me more about ${conceptName}`;
+        
+        // Set the message in the input field
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.value = message;
+        }
+        
+        // Send the message automatically
+        this.sendMessage();
+        
+        console.log(`🎯 Asking about concept: ${conceptName}`);
+    }
+
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
+
+    // Helper method to add HTML quiz content to chat
+    addQuizToChat(htmlContent) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message assistant quiz-message';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        messageContent.innerHTML = htmlContent;
+        
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // ================================= QUIZ FUNCTIONALITY =================================
+    
+    async startQuiz() {
+        console.log('🎯 Starting quiz...');
+        
+        try {
+            // Show quiz loading message
+            this.addMessageToChat('assistant', '🎯 Starting a quiz for you! Please wait...');
+            
+            // Request a quiz (default: machine learning, beginner, 5 questions)
+            const response = await fetch('/api/quiz/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.userData.access_token}`
+                },
+                body: JSON.stringify({
+                    topic: 'machine learning',
+                    difficulty: 'beginner',
+                    num_questions: 5
+                })
+            });
+
+            if (response.ok) {
+                const quizData = await response.json();
+                this.currentQuizSession = quizData;
+                this.displayQuizQuestion(quizData);
+                console.log('✅ Quiz started successfully');
+            } else {
+                throw new Error(`Failed to start quiz: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('❌ Quiz start error:', error);
+            this.addMessageToChat('assistant', '❌ Sorry, I couldn\'t start a quiz right now. Please try again later.');
+        }
+    }
+
+    displayQuizQuestion(quizData) {
+        const question = quizData.question;
+        
+        // Create quiz message with options
+        let quizHtml = `
+            <div class="quiz-container">
+                <h4>🎯 Quiz Question ${quizData.progress}</h4>
+                <p class="quiz-question"><strong>${question.question}</strong></p>
+                <div class="quiz-options">
+        `;
+        
+        question.options.forEach((option, index) => {
+            quizHtml += `
+                <button class="quiz-option" data-session-id="${quizData.session_id}" data-answer="${index}">
+                    ${String.fromCharCode(65 + index)}. ${option}
+                </button>
+            `;
+        });
+        
+        quizHtml += `
+                </div>
+                <p class="quiz-score">Score: ${quizData.score} | Progress: ${quizData.progress}</p>
+            </div>
+        `;
+        
+        // Add to chat
+        this.addQuizToChat(quizHtml);
+        
+        // Bind click events to options
+        setTimeout(() => {
+            const options = document.querySelectorAll('.quiz-option');
+            options.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const sessionId = e.target.dataset.sessionId;
+                    const answer = parseInt(e.target.dataset.answer);
+                    this.submitQuizAnswer(sessionId, answer);
+                });
+            });
+        }, 100);
+    }
+
+    async submitQuizAnswer(sessionId, answer) {
+        console.log(`📝 Submitting quiz answer: ${answer} for session ${sessionId}`);
+        
+        try {
+            // Disable all option buttons
+            const options = document.querySelectorAll('.quiz-option');
+            options.forEach(btn => {
+                btn.disabled = true;
+                if (parseInt(btn.dataset.answer) === answer) {
+                    btn.classList.add('selected');
+                }
+            });
+            
+            const response = await fetch('/api/quiz/answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.userData.access_token}`
+                },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    answer: answer
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.handleQuizAnswerResult(result);
+            } else {
+                throw new Error(`Failed to submit answer: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('❌ Quiz answer error:', error);
+            this.addMessageToChat('assistant', '❌ Sorry, I couldn\'t process your answer. Please try again.');
+        }
+    }
+
+    handleQuizAnswerResult(result) {
+        // Create comprehensive feedback message that clearly separates previous question from next
+        const statusIcon = result.is_correct ? '✅' : '❌';
+        const statusText = result.is_correct ? 'Correct!' : 'Incorrect.';
+        
+        const feedbackHtml = `
+            <div class="quiz-feedback ${result.is_correct ? 'correct' : 'incorrect'}">
+                <div class="feedback-header">
+                    <strong>${statusIcon} ${statusText}</strong>
+                </div>
+                <div class="feedback-explanation">
+                    ${result.feedback || 'No explanation provided.'}
+                </div>
+                <div class="feedback-score">
+                    Score: ${result.score} | Progress: ${result.progress}
+                </div>
+            </div>
+        `;
+        
+        this.addQuizToChat(feedbackHtml);
+        
+        if (result.completed) {
+            // Quiz completed
+            const completionHtml = `
+                <div class="quiz-completion">
+                    <h3>🎉 Quiz Completed!</h3>
+                    <p><strong>Final Score: ${result.score}/${result.progress.split('/')[1]}</strong></p>
+                    <p>Great job! ${result.score === parseInt(result.progress.split('/')[1]) ? 'Perfect score!' : 'Keep practicing to improve!'}</p>
+                </div>
+            `;
+            this.addQuizToChat(completionHtml);
+            this.currentQuizSession = null;
+        } else if (result.question) {
+            // Add clear separator before next question
+            setTimeout(() => {
+                const separatorHtml = `
+                    <div class="quiz-separator">
+                        <hr style="margin: 20px 0; border: 2px solid #ff9800;">
+                        <p style="text-align: center; font-weight: bold; color: #ff9800;">Next Question</p>
+                    </div>
+                `;
+                this.addQuizToChat(separatorHtml);
+                
+                // Display next question after separator
+                setTimeout(() => {
+                    this.displayQuizQuestion(result);
+                }, 500);
+            }, 2000); // Longer pause for user to read feedback
+        }
+    }
+
+
 }
 
 // Initialize the chat application
 document.addEventListener('DOMContentLoaded', () => {
-    new ChatApp();
+    window.chatApp = new ChatApp();
 }); 
