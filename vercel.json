@@ -1,17 +1,4 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "vercel_app.py",
-        "use": "@vercel/python"
-      }
-    ],
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "vercel_app.py"
-      }
-    ],
     "functions": {
       "vercel_app.py": {
         "maxDuration": 300
@@ -23,9 +10,17 @@
       "MILVUS_URI": "@milvus_uri",
       "MILVUS_TOKEN": "@milvus_token",
       "NEO4J_URI": "@neo4j_uri", 
+      "NEO4J_USERNAME": "@neo4j_username",
       "NEO4J_PASSWORD": "@neo4j_password",
       "SUPABASE_URL": "@supabase_url",
       "SUPABASE_ANON_KEY": "@supabase_anon_key",
-      "JWT_SECRET_KEY": "@jwt_secret_key"
+      "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+      "JWT_SECRET_KEY": "@jwt_secret_key",
+      "SMTP_SERVER": "@smtp_server",
+      "SMTP_PORT": "@smtp_port",
+      "EMAIL_USERNAME": "@email_username",
+      "EMAIL_PASSWORD": "@email_password",
+      "FROM_EMAIL": "@from_email",
+      "FROM_NAME": "@from_name"
     }
   }
