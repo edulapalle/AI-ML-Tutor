@@ -3,21 +3,5 @@
       "vercel_app.py": {
         "maxDuration": 300
       }
-    },
-    "env": {
-      "OPENAI_API_KEY": "@openai_api_key",
-      "YOUTUBE_API_KEY": "@youtube_api_key",
-      "MILVUS_URI": "@milvus_uri",
-      "MILVUS_TOKEN": "@milvus_token",
-      "NEO4J_URI": "@neo4j_uri", 
-      "NEO4J_USERNAME": "@neo4j_username",
-      "NEO4J_PASSWORD": "@neo4j_password",
-      "SUPABASE_URL": "@supabase_url",
-      "SUPABASE_ANON_KEY": "@supabase_anon_key",
-      "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
-      "JWT_SECRET_KEY": "@jwt_secret_key",
-      "SENDGRID_API_KEY": "@sendgrid_api_key",
-      "FROM_EMAIL": "@from_email",
-      "FROM_NAME": "@from_name"
     }
   }
