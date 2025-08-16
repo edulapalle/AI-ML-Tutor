@@ -1,0 +1,23 @@
+# Development requirements (includes all packages for local development)
+# For production deployment, use requirements.txt instead
+
+# Include production requirements
+-r requirements.txt
+
+# Heavy ML packages (not needed for Vercel serverless)
+sentence-transformers  # For creating embeddings locally (670MB+)
+nltk  # Natural language processing (200MB+)
+
+# YouTube processing (only for local scraping)
+yt-dlp  # YouTube video metadata extraction (50MB+)
+youtube-transcript-api  # YouTube video transcript extraction
+
+# Additional development tools
+aiohttp  # Async HTTP client for local monitoring
+urllib3  # Additional HTTP utilities
+itsdangerous  # Session management utilities
+
+# Testing and development
+pytest
+pytest-asyncio
+httpx[test]

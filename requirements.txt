@@ -1,40 +1,30 @@
+# Core FastAPI dependencies
 fastapi
-uvicorn
+uvicorn[standard]
 openai
 python-dotenv
 mmh3
 
-# Vector database and ML processing
-pymilvus  # Vector database for RAG system and concept storage
-sentence-transformers  # For creating embeddings of ML concepts
+# Vector database (lightweight for production)
+pymilvus
 
-# Web and API clients
-requests
+# Web and API clients (minimal set)
 httpx  # HTTP client for async API calls
-aiohttp  # Async HTTP client for real-time monitoring
-urllib3  # HTTP library with SSL handling
+requests  # Keep for compatibility
 
-# Web templating and static files
+# Web templating
 jinja2
 
 # Database connections
-neo4j  # Neo4j database driver for knowledge graph storage
-supabase  # Supabase client for database operations and authentication
+neo4j  # Neo4j database driver
+supabase  # Supabase client
 
-# YouTube processing and monitoring
-yt-dlp  # YouTube video metadata extraction
-youtube-transcript-api  # YouTube video transcript extraction
-
-# Natural language processing
-nltk  # Natural language processing for keyword extraction
-
-# Authentication and security
-python-jose[cryptography]  # JWT token handling for secure authentication
-passlib[bcrypt]==1.7.4  # Password hashing and verification for secure user authentication
-bcrypt==4.0.1  # Compatible bcrypt version for passlib
-python-multipart  # Form data parsing for login/registration forms
-itsdangerous  # Session management for user authentication state
-email-validator  # Email validation for Pydantic EmailStr type
+# Authentication and security (essential only)
+python-jose[cryptography]
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart
+email-validator
 
 # Utilities
-tiktoken  # Token counting for OpenAI modelsjinja2==3.1.4
+tiktoken
