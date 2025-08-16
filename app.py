@@ -29,6 +29,9 @@ from pymilvus import connections, Collection
 from neo4j import GraphDatabase
 from openai import OpenAI
 
+# Import agentic learning system
+from agentic_learning_system import AgenticLearningSystem
+
 # Load environment variables and configure SSL
 load_dotenv()
 os.environ['SSL_CERT_FILE'] = '/etc/ssl/cert.pem'
@@ -52,9 +55,14 @@ COLL_YOUTUBE_VIDEOS = "youtube_creator_videos"
 oai = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 security = HTTPBearer()
 
+# Initialize agentic learning system
+agentic_system = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
+    global agentic_system
+    
     # Startup
     print("🚀 Starting AI/ML Educational Platform")
     
@@ -74,6 +82,14 @@ async def lifespan(app: FastAPI):
         print("✅ OpenAI client initialized")
     else:
         print("⚠️ OpenAI client not configured")
+    
+    # Initialize agentic learning system
+    try:
+        agentic_system = AgenticLearningSystem()
+        print("🤖 Agentic Learning System initialized")
+    except Exception as e:
+        print(f"⚠️ Agentic Learning System failed to initialize: {e}")
+        agentic_system = None
     
     yield
     
@@ -1280,6 +1296,44 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
     print(f"   💡 Intent processed: {intent}")
     print(f"{'='*60}\n")
     
+    # 🤖 AGENTIC BEHAVIOR: Run background analysis and interventions
+    if agentic_system:
+        try:
+            # Background task - don't wait for completion to avoid slowing chat response
+            import asyncio
+            async def background_agentic_analysis():
+                try:
+                    print(f"🤖 Running background agentic analysis for user {current_user.id}")
+                    
+                    # Quick comprehension monitoring
+                    chat_patterns = await agentic_system._get_user_chat_patterns(current_user.id)
+                    insights = await agentic_system.comprehension_monitor.analyze_understanding_patterns(
+                        current_user.id, chat_patterns[-5:]  # Just last 5 messages for speed
+                    )
+                    
+                    # Check for autonomous interventions needed
+                    if insights:
+                        for insight in insights:
+                            if insight.confidence > 0.7 and "adjust" in insight.action_suggestion.lower():
+                                print(f"🤖 AUTONOMOUS ACTION: {insight.action_suggestion}")
+                                # Log the action for admin review
+                                print(f"   📊 Evidence: {insight.evidence[:2]}")
+                    
+                    # Quick learning path adjustment
+                    learning_history = await agentic_system._get_user_learning_history(current_user.id)
+                    if len(learning_history) % 5 == 0 and len(learning_history) > 0:  # Every 5th interaction
+                        print(f"🤖 LEARNING PATH: Triggering path analysis after {len(learning_history)} topics")
+                        # This could update next_concepts for future responses
+                        
+                except Exception as e:
+                    print(f"⚠️ Background agentic analysis failed (non-critical): {e}")
+            
+            # Fire and forget - don't wait for completion
+            asyncio.create_task(background_agentic_analysis())
+            
+        except Exception as e:
+            print(f"⚠️ Failed to start agentic analysis: {e}")
+    
     return ChatResponse(
         answer=answer,
         citations=citations,
@@ -1650,6 +1704,151 @@ async def get_quiz_result(session_id: str, current_user: UserProfile = Depends(g
         recommendations=recommendations
     )
 
+# =============================================================================
+# AGENTIC LEARNING ENDPOINTS
+# =============================================================================
+
+@app.post("/api/agentic/analyze")
+async def analyze_user_learning(current_user: UserProfile = Depends(get_current_user)):
+    """Run comprehensive agentic analysis of user's learning state"""
+    if not agentic_system:
+        raise HTTPException(status_code=503, detail="Agentic learning system not available")
+    
+    print(f"🤖 Running comprehensive analysis for user {current_user.id}")
+    
+    try:
+        analysis = await agentic_system.analyze_user_completely(current_user.id)
+        
+        print(f"✅ Analysis complete. Found {len(analysis.get('learning_path_recommendations', []))} path recommendations")
+        print(f"📊 Comprehension insights: {len(analysis.get('comprehension_insights', []))}")
+        print(f"🎯 Goal analysis: {analysis.get('goal_analysis', {}).get('goals_analysis', [])}")
+        print(f"📖 Content gaps: {len(analysis.get('content_gaps', []))}")
+        
+        return analysis
+        
+    except Exception as e:
+        print(f"❌ Error in agentic analysis: {e}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+@app.get("/api/agentic/insights/{user_id}")
+async def get_learning_insights(user_id: str, current_user: UserProfile = Depends(get_current_user)):
+    """Get learning insights for a specific user (admin or self only)"""
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Can only access your own insights")
+    
+    if not agentic_system:
+        raise HTTPException(status_code=503, detail="Agentic learning system not available")
+    
+    try:
+        # Get just comprehension insights quickly
+        insights = await agentic_system.comprehension_monitor.analyze_understanding_patterns(
+            user_id, 
+            await agentic_system._get_user_chat_patterns(user_id)
+        )
+        
+        return {
+            "user_id": user_id,
+            "insights": [
+                {
+                    "type": insight.insight_type,
+                    "topic": insight.topic,
+                    "confidence": insight.confidence,
+                    "action_suggestion": insight.action_suggestion,
+                    "evidence": insight.evidence[:3]  # Limit evidence for API response
+                }
+                for insight in insights
+            ],
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting insights: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get insights: {str(e)}")
+
+@app.get("/api/agentic/recommendations")
+async def get_learning_recommendations(current_user: UserProfile = Depends(get_current_user)):
+    """Get personalized learning path recommendations"""
+    if not agentic_system:
+        raise HTTPException(status_code=503, detail="Agentic learning system not available")
+    
+    try:
+        # Get learning history and progress
+        learning_history = await agentic_system._get_user_learning_history(current_user.id)
+        progress = await agentic_system._get_user_progress_tracking(current_user.id)
+        
+        # Generate recommendations
+        recommendations = await agentic_system.learning_path_agent.analyze_and_recommend(
+            current_user.id, learning_history, progress
+        )
+        
+        return {
+            "user_id": current_user.id,
+            "recommendations": [
+                {
+                    "current_topic": rec.current_topic,
+                    "next_topics": rec.next_topics,
+                    "reasoning": rec.reasoning,
+                    "prerequisites_needed": rec.prerequisites_needed,
+                    "estimated_difficulty": rec.estimated_difficulty,
+                    "confidence": rec.confidence
+                }
+                for rec in recommendations
+            ],
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting recommendations: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get recommendations: {str(e)}")
+
+@app.get("/api/agentic/goal-progress")
+async def get_goal_progress(current_user: UserProfile = Depends(get_current_user)):
+    """Get autonomous goal progress analysis"""
+    if not agentic_system:
+        raise HTTPException(status_code=503, detail="Agentic learning system not available")
+    
+    try:
+        goals = await agentic_system._get_user_goals(current_user.id)
+        learning_history = await agentic_system._get_user_learning_history(current_user.id)
+        
+        analysis = await agentic_system.goal_achievement_assistant.analyze_goal_progress(
+            current_user.id, goals, learning_history
+        )
+        
+        return {
+            "user_id": current_user.id,
+            "goal_analysis": analysis,
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting goal progress: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get goal progress: {str(e)}")
+
+@app.get("/api/agentic/content-suggestions")
+async def get_content_suggestions(current_user: UserProfile = Depends(get_current_user)):
+    """Get AI-curated content suggestions"""
+    if not agentic_system:
+        raise HTTPException(status_code=503, detail="Agentic learning system not available")
+    
+    try:
+        learning_history = await agentic_system._get_user_learning_history(current_user.id)
+        bookmarks = await agentic_system._get_user_bookmarks(current_user.id)
+        
+        suggestions = await agentic_system.content_curation_agent.identify_content_gaps(
+            current_user.id, learning_history, bookmarks
+        )
+        
+        return {
+            "user_id": current_user.id,
+            "content_suggestions": suggestions,
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting content suggestions: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get content suggestions: {str(e)}")
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
@@ -1657,7 +1856,8 @@ async def health_check():
         "status": "healthy",
         "milvus": connect_milvus(),
         "neo4j": test_neo4j_connection(),
-        "openai": oai is not None
+        "openai": oai is not None,
+        "agentic_system": agentic_system is not None
     }
 
 if __name__ == "__main__":

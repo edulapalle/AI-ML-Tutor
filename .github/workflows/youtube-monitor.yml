@@ -1,0 +1,46 @@
+name: YouTube Monitoring Automation
+
+on:
+  schedule:
+    # Run every 30 minutes
+    - cron: '0,30 * * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  monitor-youtube:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check for new StatQuest videos
+        run: |
+          echo "🔍 Checking for new StatQuest videos..."
+          
+          # Call your Vercel endpoint to check for new videos
+          response=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            "${{ secrets.VERCEL_APP_URL }}/api/youtube/process")
+          
+          # Extract response body and status code
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "📊 Response Code: $http_code"
+          echo "📄 Response Body: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ YouTube monitoring completed successfully"
+          else
+            echo "❌ YouTube monitoring failed with code $http_code"
+            exit 1
+          fi
+      
+      - name: Check monitoring status
+        if: success()
+        run: |
+          echo "📊 Getting monitoring status..."
+          
+          status_response=$(curl -s \
+            "${{ secrets.VERCEL_APP_URL }}/api/youtube/status")
+          
+          echo "📈 Status: $status_response"

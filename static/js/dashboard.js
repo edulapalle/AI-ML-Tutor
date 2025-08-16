@@ -7,6 +7,7 @@ class Dashboard {
     constructor() {
         this.conversationHistory = [];
         this.currentUser = null;
+        this.lastHealthStatus = null;
         this.settings = {
             audience: 'kid',
             useGraph: true,
@@ -36,6 +37,9 @@ class Dashboard {
             await this.loadStars();
             await this.updateLearningHistory();
             await this.checkSystemHealth();
+            
+            // Initialize agentic features
+            await this.initAgenticFeatures();
             
             console.log('Dashboard initialized successfully');
         } catch (error) {
@@ -1209,15 +1213,29 @@ class Dashboard {
             const response = await fetch('/api/health');
             const health = await response.json();
 
+            // Store health status for modal updates
+            this.lastHealthStatus = health;
+
             this.updateStatusIndicator('milvusStatus', health.milvus);
             this.updateStatusIndicator('neo4jStatus', health.neo4j);
             this.updateStatusIndicator('openaiStatus', health.openai);
         } catch (error) {
             console.error('Health check error:', error);
+            
+            // Store failed health status
+            this.lastHealthStatus = {
+                milvus: false,
+                neo4j: false,
+                openai: false
+            };
+
             this.updateStatusIndicator('milvusStatus', false);
             this.updateStatusIndicator('neo4jStatus', false);
             this.updateStatusIndicator('openaiStatus', false);
         }
+        
+        // Update profile modal status indicators if modal exists
+        this.updateProfileModalStatus();
     }
 
     updateStatusIndicator(elementId, isOnline) {
@@ -1256,9 +1274,14 @@ class Dashboard {
         }
 
         // Header buttons
+        const profileBtn = document.getElementById('profileBtn');
         const starsBtn = document.getElementById('starsBtn');
         const settingsBtn = document.getElementById('settingsBtn');
         const logoutBtn = document.getElementById('logoutBtn');
+
+        if (profileBtn) {
+            profileBtn.addEventListener('click', () => this.showProfileModal());
+        }
 
         if (starsBtn) {
             starsBtn.addEventListener('click', () => this.showStarsModal());
@@ -1294,6 +1317,22 @@ class Dashboard {
 
 
     initModals() {
+        // Profile modal
+        const profileModal = document.getElementById('profileModal');
+        const closeProfileModal = document.getElementById('closeProfileModal');
+
+        if (closeProfileModal) {
+            closeProfileModal.addEventListener('click', () => this.hideProfileModal());
+        }
+
+        if (profileModal) {
+            profileModal.addEventListener('click', (e) => {
+                if (e.target === profileModal) {
+                    this.hideProfileModal();
+                }
+            });
+        }
+
         // Stars modal
         const starsModal = document.getElementById('starsModal');
         const closeStarsModal = document.getElementById('closeStarsModal');
@@ -1351,6 +1390,102 @@ class Dashboard {
     }
 
     // ===== MODAL METHODS =====
+
+    showProfileModal() {
+        // Update modal content with current user data
+        this.updateProfileModal();
+        
+        const modal = document.getElementById('profileModal');
+        if (modal) {
+            modal.classList.add('active');
+        }
+    }
+
+    hideProfileModal() {
+        const modal = document.getElementById('profileModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+
+    updateProfileModal() {
+        if (!this.currentUser) return;
+
+        // Update basic info
+        const modalUsername = document.getElementById('modalUsername');
+        const modalUserLevel = document.getElementById('modalUserLevel');
+        const modalUserStage = document.getElementById('modalUserStage');
+        const modalUserAge = document.getElementById('modalUserAge');
+
+        if (modalUsername) modalUsername.textContent = this.currentUser.username;
+        if (modalUserLevel) modalUserLevel.textContent = this.currentUser.study_level.charAt(0).toUpperCase() + this.currentUser.study_level.slice(1);
+        if (modalUserStage) modalUserStage.textContent = this.currentUser.current_stage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        if (modalUserAge) modalUserAge.textContent = `${this.currentUser.user_age} years`;
+
+        // Update interests
+        const modalUserInterests = document.getElementById('modalUserInterests');
+        if (modalUserInterests && this.currentUser.topics_of_interest) {
+            modalUserInterests.innerHTML = '';
+            this.currentUser.topics_of_interest.forEach(interest => {
+                const tag = document.createElement('span');
+                tag.className = 'interest-tag';
+                tag.textContent = interest.charAt(0).toUpperCase() + interest.slice(1);
+                modalUserInterests.appendChild(tag);
+            });
+        }
+
+        // Update system status in modal (copy from main display)
+        const modalMilvusStatus = document.getElementById('modalMilvusStatus');
+        const modalNeo4jStatus = document.getElementById('modalNeo4jStatus');
+        const modalOpenaiStatus = document.getElementById('modalOpenaiStatus');
+        
+        const mainMilvusStatus = document.getElementById('milvusStatus');
+        const mainNeo4jStatus = document.getElementById('neo4jStatus');
+        const mainOpenaiStatus = document.getElementById('openaiStatus');
+
+        if (modalMilvusStatus && mainMilvusStatus) {
+            modalMilvusStatus.innerHTML = mainMilvusStatus.innerHTML;
+            modalMilvusStatus.className = mainMilvusStatus.className;
+        }
+        if (modalNeo4jStatus && mainNeo4jStatus) {
+            modalNeo4jStatus.innerHTML = mainNeo4jStatus.innerHTML;
+            modalNeo4jStatus.className = mainNeo4jStatus.className;
+        }
+        if (modalOpenaiStatus && mainOpenaiStatus) {
+            modalOpenaiStatus.innerHTML = mainOpenaiStatus.innerHTML;
+            modalOpenaiStatus.className = mainOpenaiStatus.className;
+        }
+    }
+
+    updateProfileModalStatus() {
+        // Only update if modal elements exist (modal might not be in DOM yet)
+        const modalMilvusStatus = document.getElementById('modalMilvusStatus');
+        const modalNeo4jStatus = document.getElementById('modalNeo4jStatus');
+        const modalOpenaiStatus = document.getElementById('modalOpenaiStatus');
+        
+        if (!modalMilvusStatus || !modalNeo4jStatus || !modalOpenaiStatus) {
+            return; // Modal not rendered yet
+        }
+        
+        // Since main status indicators don't exist, we'll update from last health check
+        // This will be called after health check, so we can fetch current status
+        this.updateModalStatusIndicator('modalMilvusStatus', this.lastHealthStatus?.milvus);
+        this.updateModalStatusIndicator('modalNeo4jStatus', this.lastHealthStatus?.neo4j);
+        this.updateModalStatusIndicator('modalOpenaiStatus', this.lastHealthStatus?.openai);
+    }
+
+    updateModalStatusIndicator(elementId, isOnline) {
+        const indicator = document.getElementById(elementId);
+        if (!indicator) return;
+
+        if (isOnline) {
+            indicator.style.color = '#48bb78';
+            indicator.innerHTML = '<i class="fas fa-circle"></i> Connected';
+        } else {
+            indicator.style.color = '#f56565';
+            indicator.innerHTML = '<i class="fas fa-circle"></i> Disconnected';
+        }
+    }
 
     showStarsModal() {
         const modal = document.getElementById('starsModal');
@@ -1463,6 +1598,377 @@ class Dashboard {
                 }
             }, 300);
         }, 3000);
+    }
+
+    // ===== AGENTIC LEARNING FEATURES =====
+
+    async initAgenticFeatures() {
+        console.log('🤖 Initializing agentic learning features...');
+        
+        try {
+            // Add agentic insights button to UI
+            this.createAgenticDashboard();
+            
+            // Schedule periodic analysis
+            this.scheduleAgenticAnalysis();
+            
+            // Load initial insights
+            await this.loadAgenticInsights();
+            
+            console.log('✅ Agentic features initialized');
+        } catch (error) {
+            console.error('❌ Failed to initialize agentic features:', error);
+        }
+    }
+
+    createAgenticDashboard() {
+        // Add agentic insights section to the learning panel
+        const learningPanel = document.getElementById('learningPanel');
+        if (!learningPanel) return;
+
+        // Check if agentic section already exists
+        if (document.getElementById('agenticInsights')) return;
+
+        const agenticSection = document.createElement('div');
+        agenticSection.className = 'agentic-insights';
+        agenticSection.id = 'agenticInsights';
+        agenticSection.innerHTML = `
+            <h4>🤖 AI Learning Coach</h4>
+            <div class="agentic-controls">
+                <button class="btn-agentic" onclick="dashboard.runFullAnalysis()">
+                    <i class="fas fa-brain"></i> Analyze My Learning
+                </button>
+                <button class="btn-agentic" onclick="dashboard.getRecommendations()">
+                    <i class="fas fa-route"></i> Get Path Suggestions
+                </button>
+            </div>
+            <div class="insights-list" id="insightsList">
+                <p class="no-insights">Click "Analyze My Learning" to get personalized insights!</p>
+            </div>
+        `;
+
+        // Insert after next concepts
+        const nextConcepts = document.getElementById('nextConcepts');
+        if (nextConcepts && nextConcepts.parentNode) {
+            nextConcepts.parentNode.insertBefore(agenticSection, nextConcepts.nextSibling);
+        }
+
+        // Add CSS styles for agentic features
+        this.addAgenticStyles();
+    }
+
+    addAgenticStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .agentic-insights {
+                margin-bottom: 2rem;
+                padding: 1rem;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 12px;
+                color: white;
+            }
+
+            .agentic-insights h4 {
+                margin: 0 0 1rem 0;
+                color: white;
+                font-size: 1rem;
+                font-weight: 600;
+            }
+
+            .agentic-controls {
+                display: flex;
+                gap: 0.5rem;
+                margin-bottom: 1rem;
+                flex-wrap: wrap;
+            }
+
+            .btn-agentic {
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                color: white;
+                padding: 0.5rem 1rem;
+                border-radius: 8px;
+                font-size: 0.8rem;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                flex: 1;
+                min-width: 120px;
+            }
+
+            .btn-agentic:hover {
+                background: rgba(255, 255, 255, 0.3);
+                transform: translateY(-1px);
+            }
+
+            .btn-agentic i {
+                margin-right: 0.5rem;
+            }
+
+            .insights-list {
+                max-height: 200px;
+                overflow-y: auto;
+            }
+
+            .insight-item {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 0.75rem;
+                border-radius: 8px;
+                margin-bottom: 0.5rem;
+                border-left: 3px solid #ffd700;
+            }
+
+            .insight-type {
+                font-weight: 600;
+                font-size: 0.8rem;
+                text-transform: uppercase;
+                color: #ffd700;
+                margin-bottom: 0.25rem;
+            }
+
+            .insight-suggestion {
+                font-size: 0.9rem;
+                line-height: 1.4;
+            }
+
+            .insight-confidence {
+                font-size: 0.7rem;
+                opacity: 0.8;
+                margin-top: 0.25rem;
+            }
+
+            .no-insights {
+                text-align: center;
+                font-style: italic;
+                opacity: 0.8;
+                margin: 0;
+                font-size: 0.9rem;
+            }
+
+            .analysis-loading {
+                text-align: center;
+                padding: 1rem;
+            }
+
+            .loading-spinner {
+                display: inline-block;
+                width: 16px;
+                height: 16px;
+                border: 2px solid rgba(255,255,255,0.3);
+                border-radius: 50%;
+                border-top-color: white;
+                animation: spin 1s ease-in-out infinite;
+                margin-right: 0.5rem;
+            }
+
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    scheduleAgenticAnalysis() {
+        // Run analysis every 10 interactions
+        let interactionCount = 0;
+        const originalSendMessage = this.sendMessage.bind(this);
+        
+        this.sendMessage = async function(message) {
+            const result = await originalSendMessage(message);
+            interactionCount++;
+            
+            // Trigger analysis every 10 interactions
+            if (interactionCount % 10 === 0) {
+                console.log('🤖 Triggering scheduled agentic analysis');
+                setTimeout(() => this.loadAgenticInsights(), 2000); // Delay to not interfere with chat
+            }
+            
+            return result;
+        }.bind(this);
+    }
+
+    async loadAgenticInsights() {
+        try {
+            const response = await fetch('/api/agentic/insights/' + this.currentUser.id, {
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayInsights(data.insights);
+            }
+        } catch (error) {
+            console.error('Failed to load agentic insights:', error);
+        }
+    }
+
+    displayInsights(insights) {
+        const insightsList = document.getElementById('insightsList');
+        if (!insightsList) return;
+
+        if (!insights || insights.length === 0) {
+            insightsList.innerHTML = '<p class="no-insights">No insights available yet. Keep learning!</p>';
+            return;
+        }
+
+        const insightsHtml = insights.slice(0, 3).map(insight => `
+            <div class="insight-item">
+                <div class="insight-type">${insight.type.replace('_', ' ')}</div>
+                <div class="insight-suggestion">${insight.action_suggestion}</div>
+                <div class="insight-confidence">Confidence: ${Math.round(insight.confidence * 100)}%</div>
+            </div>
+        `).join('');
+
+        insightsList.innerHTML = insightsHtml;
+    }
+
+    async runFullAnalysis() {
+        console.log('🤖 Running full agentic analysis...');
+        
+        const insightsList = document.getElementById('insightsList');
+        if (insightsList) {
+            insightsList.innerHTML = `
+                <div class="analysis-loading">
+                    <div class="loading-spinner"></div>
+                    Analyzing your learning patterns...
+                </div>
+            `;
+        }
+
+        try {
+            const response = await fetch('/api/agentic/analyze', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const analysis = await response.json();
+                this.displayFullAnalysis(analysis);
+                this.showNotification('🤖 Learning analysis complete!');
+            } else {
+                throw new Error('Analysis failed');
+            }
+        } catch (error) {
+            console.error('Failed to run full analysis:', error);
+            this.showNotification('❌ Analysis failed. Please try again.', 'error');
+            
+            if (insightsList) {
+                insightsList.innerHTML = '<p class="no-insights">Analysis failed. Please try again.</p>';
+            }
+        }
+    }
+
+    displayFullAnalysis(analysis) {
+        const insightsList = document.getElementById('insightsList');
+        if (!insightsList) return;
+
+        const synthesis = analysis.synthesis || {};
+        const insights = analysis.comprehension_insights || [];
+        const recommendations = analysis.learning_path_recommendations || [];
+
+        let html = '';
+
+        // Show key insights
+        if (synthesis.key_insights) {
+            html += `
+                <div class="insight-item">
+                    <div class="insight-type">Key Insights</div>
+                    <div class="insight-suggestion">${synthesis.key_insights.join('. ')}</div>
+                </div>
+            `;
+        }
+
+        // Show next steps
+        if (synthesis.next_steps) {
+            html += `
+                <div class="insight-item">
+                    <div class="insight-type">Recommended Actions</div>
+                    <div class="insight-suggestion">${synthesis.next_steps}</div>
+                </div>
+            `;
+        }
+
+        // Show top comprehension insight
+        if (insights.length > 0) {
+            const topInsight = insights[0];
+            html += `
+                <div class="insight-item">
+                    <div class="insight-type">${topInsight.insight_type.replace('_', ' ')}</div>
+                    <div class="insight-suggestion">${topInsight.action_suggestion}</div>
+                    <div class="insight-confidence">Confidence: ${Math.round(topInsight.confidence * 100)}%</div>
+                </div>
+            `;
+        }
+
+        if (html) {
+            insightsList.innerHTML = html;
+        } else {
+            insightsList.innerHTML = '<p class="no-insights">Analysis complete. Keep learning to build insights!</p>';
+        }
+    }
+
+    async getRecommendations() {
+        console.log('🤖 Getting learning path recommendations...');
+        
+        try {
+            const response = await fetch('/api/agentic/recommendations', {
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayRecommendations(data.recommendations);
+                this.showNotification('🤖 New learning recommendations ready!');
+            } else {
+                throw new Error('Failed to get recommendations');
+            }
+        } catch (error) {
+            console.error('Failed to get recommendations:', error);
+            this.showNotification('❌ Failed to get recommendations. Please try again.', 'error');
+        }
+    }
+
+    displayRecommendations(recommendations) {
+        if (!recommendations || recommendations.length === 0) {
+            this.showNotification('No new recommendations at this time', 'info');
+            return;
+        }
+
+        // Update the next concepts section with AI recommendations
+        const conceptsList = document.querySelector('.concepts-list');
+        if (conceptsList) {
+            const aiRecs = recommendations.slice(0, 2); // Top 2 recommendations
+            
+            const recHtml = aiRecs.map(rec => `
+                <div class="concept-item ai-recommended" title="${rec.reasoning}">
+                    <div class="concept-name">🤖 ${rec.next_topics[0] || 'AI Suggestion'}</div>
+                    <div class="concept-reasoning">${rec.reasoning.substring(0, 60)}...</div>
+                </div>
+            `).join('');
+
+            // Prepend AI recommendations
+            conceptsList.innerHTML = recHtml + conceptsList.innerHTML;
+        }
+
+        // Show in insights panel too
+        const insightsList = document.getElementById('insightsList');
+        if (insightsList) {
+            const recHtml = recommendations.slice(0, 2).map(rec => `
+                <div class="insight-item">
+                    <div class="insight-type">Path Recommendation</div>
+                    <div class="insight-suggestion">Next: ${rec.next_topics.join(', ')}</div>
+                    <div class="insight-confidence">Reasoning: ${rec.reasoning}</div>
+                </div>
+            `).join('');
+
+            insightsList.innerHTML = recHtml;
+        }
     }
 }
 

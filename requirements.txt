@@ -4,29 +4,37 @@ openai
 python-dotenv
 mmh3
 
-
+# Vector database and ML processing
 pymilvus  # Vector database for RAG system and concept storage
 sentence-transformers  # For creating embeddings of ML concepts
+
+# Web and API clients
 requests
+httpx  # HTTP client for async API calls
+aiohttp  # Async HTTP client for real-time monitoring
+urllib3  # HTTP library with SSL handling
+
+# Web templating and static files
 jinja2
+
+# Database connections
 neo4j  # Neo4j database driver for knowledge graph storage
+supabase  # Supabase client for database operations and authentication
+
+# YouTube processing and monitoring
 yt-dlp  # YouTube video metadata extraction
 youtube-transcript-api  # YouTube video transcript extraction
+
+# Natural language processing
 nltk  # Natural language processing for keyword extraction
 
-# Supabase client for database operations and authentication
-supabase
-# JWT token handling for secure authentication
-python-jose[cryptography]
-# Password hashing and verification for secure user authentication
-passlib[bcrypt]==1.7.4
-# Compatible bcrypt version for passlib
-bcrypt==4.0.1
-# Form data parsing for login/registration forms
-python-multipart
-# Session management for user authentication state
-itsdangerous
-# Email validation for Pydantic EmailStr type
-email-validator
-# tiktoken
-httpx  # HTTP client for async API calls
+# Authentication and security
+python-jose[cryptography]  # JWT token handling for secure authentication
+passlib[bcrypt]==1.7.4  # Password hashing and verification for secure user authentication
+bcrypt==4.0.1  # Compatible bcrypt version for passlib
+python-multipart  # Form data parsing for login/registration forms
+itsdangerous  # Session management for user authentication state
+email-validator  # Email validation for Pydantic EmailStr type
+
+# Utilities
+tiktoken  # Token counting for OpenAI models

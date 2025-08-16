@@ -24,6 +24,10 @@
                 </div>
                 
                 <div class="header-actions">
+                    <button class="header-btn" id="profileBtn" title="Profile">
+                        <i class="fas fa-user"></i>
+                    </button>
+                    
                     <button class="header-btn" id="starsBtn" title="My Bookmarks">
                         <i class="fas fa-star"></i>
                         <span class="star-count">0</span>
@@ -43,61 +47,17 @@
 
     <!-- Main Container -->
     <div class="main-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-section">
-                <h3><i class="fas fa-user"></i> Profile</h3>
-                <div class="profile-card">
-                    <div class="profile-item">
-                        <span class="label">Level:</span>
-                        <span class="value" id="userLevel">{{ user.study_level.title() if user else 'Loading...' }}</span>
-                    </div>
-                    <div class="profile-item">
-                        <span class="label">Stage:</span>
-                        <span class="value" id="userStage">{{ user.current_stage.replace('_', ' ').title() if user else 'Loading...' }}</span>
-                    </div>
-                    <div class="profile-item">
-                        <span class="label">Age:</span>
-                        <span class="value" id="userAge">{{ user.user_age ~ ' years' if user else 'Loading...' }}</span>
-                    </div>
-                </div>
+        <!-- Bookmarks Panel (Left Side) -->
+        <aside class="bookmarks-panel" id="bookmarksPanel">
+            <div class="panel-header">
+                <h3><i class="fas fa-bookmark"></i> My Bookmarks</h3>
             </div>
-
-            <div class="sidebar-section">
-                <h3><i class="fas fa-heart"></i> Interests</h3>
-                <div class="interests-list" id="userInterests">
-                    {% if user and user.topics_of_interest %}
-                        {% for topic in user.topics_of_interest %}
-                        <span class="interest-tag">{{ topic.title() }}</span>
-                        {% endfor %}
-                    {% else %}
-                        <span class="interest-tag">Loading...</span>
-                    {% endif %}
-                </div>
-            </div>
-
-
-
-            <div class="sidebar-section">
-                <h3><i class="fas fa-chart-line"></i> System Status</h3>
-                <div class="system-status">
-                    <div class="status-item">
-                        <span class="status-label">Vector DB:</span>
-                        <span class="status-indicator" id="milvusStatus">
-                            <i class="fas fa-circle"></i> Checking...
-                        </span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Knowledge Graph:</span>
-                        <span class="status-indicator" id="neo4jStatus">
-                            <i class="fas fa-circle"></i> Checking...
-                        </span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">AI Model:</span>
-                        <span class="status-indicator" id="openaiStatus">
-                            <i class="fas fa-circle"></i> Checking...
-                        </span>
+            
+            <div class="panel-content">
+                <div class="starred-content" id="starredContent">
+                    <h4>Saved Content:</h4>
+                    <div class="stars-list">
+                        <!-- Dynamic content -->
                     </div>
                 </div>
             </div>
@@ -185,18 +145,82 @@
                         <!-- Dynamic content -->
                     </div>
                 </div>
-                
-                <div class="starred-content" id="starredContent">
-                    <h4>My Bookmarks:</h4>
-                    <div class="stars-list">
-                        <!-- Dynamic content -->
-                    </div>
-                </div>
             </div>
         </aside>
     </div>
 
     <!-- Modals -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user"></i> My Profile</h3>
+                <button class="modal-close" id="closeProfileModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-grid">
+                    <div class="profile-section">
+                        <h4><i class="fas fa-id-card"></i> Basic Info</h4>
+                        <div class="profile-item">
+                            <span class="label">Username:</span>
+                            <span class="value" id="modalUsername">{{ user.username if user else 'Loading...' }}</span>
+                        </div>
+                        <div class="profile-item">
+                            <span class="label">Study Level:</span>
+                            <span class="value" id="modalUserLevel">{{ user.study_level.title() if user else 'Loading...' }}</span>
+                        </div>
+                        <div class="profile-item">
+                            <span class="label">Life Stage:</span>
+                            <span class="value" id="modalUserStage">{{ user.current_stage.replace('_', ' ').title() if user else 'Loading...' }}</span>
+                        </div>
+                        <div class="profile-item">
+                            <span class="label">Age:</span>
+                            <span class="value" id="modalUserAge">{{ user.user_age ~ ' years' if user else 'Loading...' }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h4><i class="fas fa-heart"></i> Learning Interests</h4>
+                        <div class="interests-list" id="modalUserInterests">
+                            {% if user and user.topics_of_interest %}
+                                {% for topic in user.topics_of_interest %}
+                                <span class="interest-tag">{{ topic.title() }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="interest-tag">Loading...</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h4><i class="fas fa-chart-line"></i> System Status</h4>
+                        <div class="system-status">
+                            <div class="status-item">
+                                <span class="status-label">Vector DB:</span>
+                                <span class="status-indicator" id="modalMilvusStatus">
+                                    <i class="fas fa-circle"></i> Checking...
+                                </span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Knowledge Graph:</span>
+                                <span class="status-indicator" id="modalNeo4jStatus">
+                                    <i class="fas fa-circle"></i> Checking...
+                                </span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">AI Model:</span>
+                                <span class="status-indicator" id="modalOpenaiStatus">
+                                    <i class="fas fa-circle"></i> Checking...
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="starsModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -249,11 +273,12 @@
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner">
-            <i class="fas fa-brain fa-spin"></i>
-            <p>Thinking...</p>
+            <div class="brain-container">
+                <i class="fas fa-brain"></i>
+            </div>
+            <p class="thinking-text">Thinking...</p>
         </div>
     </div>
-
     <script src="/static/js/dashboard.js"></script>
 </body>
 </html>
