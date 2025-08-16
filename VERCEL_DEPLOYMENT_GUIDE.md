@@ -122,13 +122,10 @@ NEO4J_USERNAME = your_neo4j_username
 NEO4J_PASSWORD = your_neo4j_password
 ```
 
-#### **📧 Email Configuration (Optional)**
+#### **📧 Email Configuration (SendGrid)**
 ```
-SMTP_SERVER = smtp.gmail.com
-SMTP_PORT = 587
-EMAIL_USERNAME = your_email@gmail.com
-EMAIL_PASSWORD = your_app_specific_password
-FROM_EMAIL = your_email@gmail.com
+SENDGRID_API_KEY = your_sendgrid_api_key
+FROM_EMAIL = noreply@yourdomain.com
 FROM_NAME = AI Learning Platform
 ```
 

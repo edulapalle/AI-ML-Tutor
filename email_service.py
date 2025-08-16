@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 """
-Weekly Learning Email Service
+Weekly Learning Email Service using SendGrid
 Sends personalized learning reports to users based on their progress
 """
 
 import os
-import smtplib
 import asyncio
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import jinja2
@@ -20,15 +15,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class EmailService:
-    """Handles sending learning reports and notifications"""
+    """Handles sending learning reports and notifications using SendGrid"""
     
     def __init__(self):
-        # Email configuration
-        self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        self.email_username = os.getenv("EMAIL_USERNAME")
-        self.email_password = os.getenv("EMAIL_PASSWORD") 
-        self.from_email = os.getenv("FROM_EMAIL", self.email_username)
+        # SendGrid configuration
+        self.sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
+        self.from_email = os.getenv("FROM_EMAIL", "noreply@ailearning.com")
         self.from_name = os.getenv("FROM_NAME", "AI Learning Platform")
         
         # Supabase configuration
@@ -41,7 +33,11 @@ class EmailService:
             autoescape=jinja2.select_autoescape(['html', 'xml'])
         )
         
-        print(f"📧 Email service initialized (SMTP: {self.smtp_server}:{self.smtp_port})")
+        if not self.sendgrid_api_key:
+            print("⚠️ Warning: SENDGRID_API_KEY not found in environment variables")
+            print("   Email functionality will not work without SendGrid API key")
+        else:
+            print(f"📧 Email service initialized with SendGrid API")
     
     async def get_user_weekly_data(self, user_id: str) -> Dict[str, Any]:
         """Get user's learning data for the past week"""
@@ -236,9 +232,14 @@ class EmailService:
         }
     
     async def send_weekly_report(self, user_id: str, test_mode: bool = False) -> bool:
-        """Send weekly learning report to user"""
+        """Send weekly learning report to user using SendGrid"""
         
         print(f"📧 Generating weekly report for user {user_id}")
+        
+        # Check SendGrid API key
+        if not self.sendgrid_api_key:
+            print("❌ SENDGRID_API_KEY not configured")
+            return False
         
         # Get user data
         weekly_data = await self.get_user_weekly_data(user_id)
@@ -271,36 +272,91 @@ class EmailService:
             template = self.template_env.get_template("weekly_report.html")
             html_content = template.render(context)
             
-            # Create message
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = f"🎓 Your Weekly Learning Report - {insights['topics_learned']} New Concepts!"
-            msg["From"] = f"{self.from_name} <{self.from_email}>"
-            msg["To"] = email
-            
-            # Add HTML content
-            html_part = MIMEText(html_content, "html")
-            msg.attach(html_part)
+            subject = f"🎓 Your Weekly Learning Report - {insights['topics_learned']} New Concepts!"
             
             # Send email (or print in test mode)
             if test_mode:
                 print("📧 TEST MODE - Email content:")
                 print(f"To: {email}")
-                print(f"Subject: {msg['Subject']}")
+                print(f"Subject: {subject}")
                 print("="*50)
                 print(html_content[:500] + "..." if len(html_content) > 500 else html_content)
                 return True
             else:
-                # Send actual email
-                with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                    server.starttls()
-                    server.login(self.email_username, self.email_password)
-                    server.send_message(msg)
-                
-                print(f"✅ Weekly report sent to {email}")
-                return True
+                # Send via SendGrid API
+                return await self.send_via_sendgrid(
+                    to_email=email,
+                    to_name=user.get("username", "Learner"),
+                    subject=subject,
+                    html_content=html_content
+                )
                 
         except Exception as e:
             print(f"❌ Error sending email: {e}")
+            return False
+    
+    async def send_via_sendgrid(self, to_email: str, to_name: str, subject: str, html_content: str) -> bool:
+        """Send email using SendGrid API"""
+        
+        sendgrid_url = "https://api.sendgrid.com/v3/mail/send"
+        
+        # Prepare SendGrid payload
+        payload = {
+            "personalizations": [
+                {
+                    "to": [
+                        {
+                            "email": to_email,
+                            "name": to_name
+                        }
+                    ],
+                    "subject": subject
+                }
+            ],
+            "from": {
+                "email": self.from_email,
+                "name": self.from_name
+            },
+            "content": [
+                {
+                    "type": "text/html",
+                    "value": html_content
+                }
+            ],
+            "tracking_settings": {
+                "click_tracking": {
+                    "enable": True,
+                    "enable_text": False
+                },
+                "open_tracking": {
+                    "enable": True
+                }
+            }
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {self.sendgrid_api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    sendgrid_url,
+                    json=payload,
+                    headers=headers
+                )
+                
+                if response.status_code == 202:
+                    print(f"✅ Email sent successfully to {to_email}")
+                    return True
+                else:
+                    print(f"❌ SendGrid API error: {response.status_code}")
+                    print(f"   Response: {response.text}")
+                    return False
+                    
+        except Exception as e:
+            print(f"❌ Error calling SendGrid API: {e}")
             return False
     
     async def send_bulk_weekly_reports(self, test_mode: bool = False) -> Dict[str, int]:

@@ -16,10 +16,7 @@
       "SUPABASE_ANON_KEY": "@supabase_anon_key",
       "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
       "JWT_SECRET_KEY": "@jwt_secret_key",
-      "SMTP_SERVER": "@smtp_server",
-      "SMTP_PORT": "@smtp_port",
-      "EMAIL_USERNAME": "@email_username",
-      "EMAIL_PASSWORD": "@email_password",
+      "SENDGRID_API_KEY": "@sendgrid_api_key",
       "FROM_EMAIL": "@from_email",
       "FROM_NAME": "@from_name"
     }

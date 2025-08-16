@@ -1,26 +1,22 @@
 # Email Configuration for Weekly Reports
-# Copy these to your .env file and configure with your SMTP settings
+# Copy these to your .env file and configure with your SendGrid settings
 
-# SMTP Server Configuration
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
+# SendGrid API Configuration (Recommended)
+SENDGRID_API_KEY=your_sendgrid_api_key_here
 
-# Email Credentials (use app-specific passwords for Gmail)
-EMAIL_USERNAME=your_email@gmail.com
-EMAIL_PASSWORD=your_app_specific_password
-
-# From Email Details
-FROM_EMAIL=your_email@gmail.com
+# From Email Details (must be verified in SendGrid)
+FROM_EMAIL=noreply@yourdomain.com
 FROM_NAME=AI Learning Platform
 
-# Optional: Custom SMTP settings for other providers
-# SMTP_SERVER=smtp.outlook.com  # For Outlook
-# SMTP_PORT=587
-# 
-# SMTP_SERVER=smtp.yahoo.com    # For Yahoo
-# SMTP_PORT=587
+# Instructions for SendGrid Setup:
+# 1. Go to https://sendgrid.com and create a free account
+# 2. Verify your sender identity (domain or single sender)
+# 3. Create an API key with Mail Send permissions
+# 4. Add the API key to your .env file as SENDGRID_API_KEY
+# 5. Update FROM_EMAIL to match your verified sender
 
-# Note: For Gmail, you'll need to:
-# 1. Enable 2-factor authentication
-# 2. Generate an app-specific password
-# 3. Use the app password, not your regular Gmail password
+# SendGrid Free Plan includes:
+# - 100 emails per day
+# - Advanced analytics and tracking
+# - Better delivery rates than SMTP
+# - Easy setup and configuration
