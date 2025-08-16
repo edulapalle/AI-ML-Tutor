@@ -1,0 +1,26 @@
+# Email Configuration for Weekly Reports
+# Copy these to your .env file and configure with your SMTP settings
+
+# SMTP Server Configuration
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+
+# Email Credentials (use app-specific passwords for Gmail)
+EMAIL_USERNAME=your_email@gmail.com
+EMAIL_PASSWORD=your_app_specific_password
+
+# From Email Details
+FROM_EMAIL=your_email@gmail.com
+FROM_NAME=AI Learning Platform
+
+# Optional: Custom SMTP settings for other providers
+# SMTP_SERVER=smtp.outlook.com  # For Outlook
+# SMTP_PORT=587
+# 
+# SMTP_SERVER=smtp.yahoo.com    # For Yahoo
+# SMTP_PORT=587
+
+# Note: For Gmail, you'll need to:
+# 1. Enable 2-factor authentication
+# 2. Generate an app-specific password
+# 3. Use the app password, not your regular Gmail password

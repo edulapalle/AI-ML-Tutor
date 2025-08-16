@@ -31,6 +31,10 @@ from openai import OpenAI
 
 # Import agentic learning system
 from agentic_learning_system import AgenticLearningSystem
+from email_service import get_email_service
+
+# Import abuse protection system
+from protection_middleware import validate_chat_message
 
 # Load environment variables and configure SSL
 load_dotenv()
@@ -1082,7 +1086,7 @@ async def get_profile(current_user: UserProfile = Depends(get_current_user)):
     return current_user
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_current_user)):
+async def chat(request: ChatRequest, fastapi_request: Request, current_user: UserProfile = Depends(get_current_user)):
     """Advanced RAG chat endpoint with comprehensive data tracking"""
     t0 = time.time()
     
@@ -1095,7 +1099,31 @@ async def chat(request: ChatRequest, current_user: UserProfile = Depends(get_cur
     print(f"   Study Level: {current_user.study_level}")
     print(f"   Timestamp: {datetime.now().isoformat()}")
     
-    # 1) Advanced Guardrails with conversation context
+    # 🛡️ ABUSE PROTECTION: Comprehensive validation before processing
+    print(f"   🛡️ Running abuse protection checks...")
+    protection_result = await validate_chat_message(fastapi_request, request.message, current_user.id)
+    
+    if not protection_result["is_valid"]:
+        error_message = protection_result["error_message"]
+        status_code = protection_result["status_code"]
+        
+        print(f"   ❌ Request blocked: {protection_result['error_type']}")
+        
+        # Return appropriate error based on protection result
+        if status_code == 429:
+            raise HTTPException(
+                status_code=429, 
+                detail=error_message,
+                headers={"Retry-After": str(int(protection_result.get("retry_after", 60)))}
+            )
+        elif status_code == 403:
+            raise HTTPException(status_code=403, detail=error_message)
+        else:
+            raise HTTPException(status_code=400, detail=error_message)
+    
+    print(f"   ✅ ABUSE PROTECTION: Query allowed - {protection_result.get('validation_method', 'N/A')} validation (latency: {int((time.time() - t0) * 1000)}ms)")
+    
+    # 1) Advanced Guardrails with conversation context (keeping existing guardrails as backup)
     from run_gaurdrails import run_guardrails
     
     print(f"   🛡️ Running comprehensive guardrails...")
@@ -1859,6 +1887,94 @@ async def health_check():
         "openai": oai is not None,
         "agentic_system": agentic_system is not None
     }
+
+# ================================= EMAIL ENDPOINTS =================================
+
+@app.post("/api/email/weekly-report")
+async def send_weekly_report(current_user: UserProfile = Depends(get_current_user)):
+    """Send weekly learning report to current user"""
+    
+    print(f"📧 Sending weekly report to user {current_user.id}")
+    
+    try:
+        email_service = get_email_service()
+        success = await email_service.send_weekly_report(current_user.id, test_mode=False)
+        
+        if success:
+            return {
+                "status": "sent",
+                "message": "Weekly report sent successfully!",
+                "user_id": current_user.id,
+                "sent_at": datetime.now().isoformat()
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to send weekly report")
+            
+    except Exception as e:
+        print(f"❌ Error sending weekly report: {e}")
+        raise HTTPException(status_code=500, detail=f"Error sending report: {str(e)}")
+
+@app.post("/api/email/weekly-report/preview")
+async def preview_weekly_report(current_user: UserProfile = Depends(get_current_user)):
+    """Preview weekly learning report (test mode - doesn't send email)"""
+    
+    print(f"📧 Generating weekly report preview for user {current_user.id}")
+    
+    try:
+        email_service = get_email_service()
+        success = await email_service.send_weekly_report(current_user.id, test_mode=True)
+        
+        if success:
+            return {
+                "status": "preview_generated",
+                "message": "Weekly report preview generated (check server logs)",
+                "user_id": current_user.id,
+                "generated_at": datetime.now().isoformat()
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to generate preview")
+            
+    except Exception as e:
+        print(f"❌ Error generating preview: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating preview: {str(e)}")
+
+@app.get("/api/email/user-data/{user_id}")
+async def get_user_email_data(
+    user_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+):
+    """Get user's weekly learning data for email generation (for debugging)"""
+    
+    # Only allow users to see their own data
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Can only access your own data")
+    
+    try:
+        email_service = get_email_service()
+        weekly_data = await email_service.get_user_weekly_data(user_id)
+        
+        if not weekly_data:
+            raise HTTPException(status_code=404, detail="User data not found")
+        
+        # Generate insights
+        insights = email_service.generate_learning_insights(weekly_data)
+        
+        return {
+            "user_id": user_id,
+            "weekly_data": {
+                "topics_learned": len(weekly_data["weekly_topics"]),
+                "questions_asked": len([chat for chat in weekly_data["weekly_chats"] if chat.get('role') == 'user']),
+                "concepts_bookmarked": len(weekly_data["weekly_stars"]),
+                "week_start": weekly_data["week_start"].isoformat(),
+                "week_end": weekly_data["week_end"].isoformat()
+            },
+            "insights": insights,
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting user email data: {e}")
+        raise HTTPException(status_code=500, detail=f"Error getting data: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

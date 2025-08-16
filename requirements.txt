@@ -37,4 +37,4 @@ itsdangerous  # Session management for user authentication state
 email-validator  # Email validation for Pydantic EmailStr type
 
 # Utilities
-tiktoken  # Token counting for OpenAI models
+tiktoken  # Token counting for OpenAI modelsjinja2==3.1.4

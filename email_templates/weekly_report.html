@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Weekly Learning Adventure!</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Arial', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ffa726);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+            position: relative;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .level-badge {
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            padding: 8px 16px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .content {
+            padding: 30px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(116, 185, 255, 0.3);
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+        }
+        .section h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .topics-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .topic-tag {
+            background: linear-gradient(135deg, #a8e6cf, #56c596);
+            color: #2d5f3f;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(86, 197, 150, 0.3);
+        }
+        .achievements {
+            background: linear-gradient(135deg, #ffd93d, #ff9a56);
+            color: #8b4513;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .achievement-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .next-concepts {
+            background: linear-gradient(135deg, #c471ed, #f64f59);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .concept-list {
+            list-style: none;
+            padding: 0;
+        }
+        .concept-list li {
+            background: rgba(255,255,255,0.2);
+            margin: 8px 0;
+            padding: 12px;
+            border-radius: 10px;
+            border-left: 4px solid rgba(255,255,255,0.5);
+        }
+        .footer {
+            background: #2d3436;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+        }
+        .cta-button {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            display: inline-block;
+            margin: 20px 0;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 20px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎓 Weekly Learning Adventure!</h1>
+            <p>Hey {{ username }}! Here's your amazing progress this week</p>
+            <div class="level-badge">
+                {{ insights.level_emoji }} {{ insights.level }}
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Stats Overview -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-number">{{ insights.topics_learned }}</span>
+                    <div class="stat-label">New Concepts Learned</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">{{ insights.questions_asked }}</span>
+                    <div class="stat-label">Questions Asked</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">{{ insights.concepts_bookmarked }}</span>
+                    <div class="stat-label">Concepts Bookmarked</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">{{ insights.learning_days }}</span>
+                    <div class="stat-label">Active Learning Days</div>
+                </div>
+            </div>
+
+            <!-- Learning Progress -->
+            <div class="section">
+                <h2>📈 Your Learning Journey</h2>
+                <p>You've explored <strong>{{ insights.total_concepts }}</strong> concepts so far! Amazing work!</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ (insights.total_concepts * 3.33) | round }}%"></div>
+                </div>
+                <p><small>Progress toward becoming an ML Expert!</small></p>
+            </div>
+
+            <!-- This Week's Topics -->
+            {% if insights.weekly_topics_list %}
+            <div class="section">
+                <h2>🧠 What You Learned This Week</h2>
+                <div class="topics-list">
+                    {% for topic in insights.weekly_topics_list %}
+                    <span class="topic-tag">{{ topic | title }}</span>
+                    {% endfor %}
+                </div>
+                <p>Each concept you learn builds on the last. You're creating an amazing foundation!</p>
+            </div>
+            {% endif %}
+
+            <!-- Achievements -->
+            {% if insights.achievements %}
+            <div class="achievements">
+                <h2 style="margin-top: 0; color: #8b4513;">🏆 This Week's Achievements</h2>
+                {% for achievement in insights.achievements %}
+                <div class="achievement-item">
+                    <span>{{ achievement }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Next Concepts -->
+            <div class="next-concepts">
+                <h2 style="margin-top: 0;">🚀 What to Explore Next</h2>
+                <p>Based on what you've learned, here are some exciting concepts to discover:</p>
+                <ul class="concept-list">
+                    {% for concept in insights.next_concepts %}
+                    <li>📚 {{ concept | title }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Call to Action -->
+            <div style="text-align: center;">
+                <a href="http://localhost:8000" class="cta-button">
+                    🎓 Continue Learning Adventure!
+                </a>
+                <p>Ready to explore more amazing concepts? Let's keep learning together!</p>
+            </div>
+
+            <!-- Learning Time -->
+            <div class="section">
+                <h2>⏰ Time Well Spent</h2>
+                <p>You spent approximately <strong>{{ insights.total_learning_time }}</strong> minutes learning this week!</p>
+                <p>Remember: every question you ask and every concept you explore makes you smarter! 🧠✨</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Week of {{ week_start }} - {{ week_end }}</p>
+            <p>Keep up the fantastic work, {{ username }}! 🌟</p>
+            <p><small>AI Learning Platform • Making learning fun and accessible for everyone</small></p>
+        </div>
+    </div>
+</body>
+</html>

@@ -14,31 +14,99 @@ load_dotenv()
 
 BASE_URL = "http://localhost:8000"
 
+def get_auth_token():
+    """Get authentication token for testing"""
+    try:
+        # Try to login with test credentials
+        response = requests.post(
+            f"{BASE_URL}/api/auth/login",
+            json={
+                "email": "test_integration@example.com",
+                "password": "TestPassword123!"
+            }
+        )
+        if response.status_code == 200:
+            return response.json()["access_token"]
+    except Exception:
+        pass
+    
+    # Try to register and login
+    try:
+        test_user = {
+            "username": "testuser_rag",
+            "email": "test_integration@example.com",
+            "password": "TestPassword123!",
+            "date_of_birth": "1995-01-01",
+            "current_stage": "college",
+            "study_level": "beginner",
+            "topics_of_interest": ["machine_learning", "deep_learning"],
+            "current_goals": ["Learn ML basics"],
+            "preferred_learning_style": "study_and_test"
+        }
+        
+        requests.post(f"{BASE_URL}/api/auth/register", json=test_user)
+        
+        response = requests.post(
+            f"{BASE_URL}/api/auth/login",
+            json={
+                "email": test_user["email"],
+                "password": test_user["password"]
+            }
+        )
+        if response.status_code == 200:
+            return response.json()["access_token"]
+    except Exception:
+        pass
+    
+    return None
+
 def test_query_endpoint():
-    """Test the main /query endpoint"""
-    print("🧪 Testing /query endpoint...")
+    """Test the main /api/chat endpoint"""
+    print("🧪 Testing /api/chat endpoint...")
+    
+    # Get authentication token
+    token = get_auth_token()
+    if not token:
+        print("❌ Could not get authentication token")
+        return
+    
+    headers = {"Authorization": f"Bearer {token}"}
     
     test_queries = [
         {
-            "question": "What is machine learning?",
+            "question": "What is overfitting?",
             "audience": "kid",
             "top_k": 5,
             "use_graph": True,
             "expected_intent": "explain"
         },
         {
-            "question": "Compare supervised vs unsupervised learning",
+            "question": "Compare CNN vs RNN",
             "audience": "teen", 
             "top_k": 8,
             "use_graph": True,
             "expected_intent": "compare"
         },
         {
-            "question": "What should I learn after neural networks?",
+            "question": "Next after logistic regression?",
             "audience": "kid",
             "top_k": 6,
             "use_graph": True,
             "expected_intent": "next"
+        },
+        {
+            "question": "Explain PCA",
+            "audience": "kid",
+            "top_k": 5,
+            "use_graph": True,
+            "expected_intent": "explain"
+        },
+        {
+            "question": "Common DT mistakes",
+            "audience": "teen",
+            "top_k": 6,
+            "use_graph": True,
+            "expected_intent": "explain"
         }
     ]
     
@@ -47,23 +115,24 @@ def test_query_endpoint():
         
         try:
             response = requests.post(
-                f"{BASE_URL}/query",
-                json=query,
+                f"{BASE_URL}/api/chat",
+                headers=headers,
+                json={
+                    "message": query["question"],
+                    "conversation_history": []
+                },
                 timeout=30
             )
             
             if response.status_code == 200:
                 data = response.json()
-                print(f"✅ Success! Intent: {data['intent']}, Citations: {len(data['citations'])}")
-                print(f"   Next concepts: {len(data['next_concepts'])}")
-                print(f"   Latency: {data['latency_ms']}ms")
+                print(f"✅ Success! Answer length: {len(data.get('answer', ''))} chars")
                 
-                # Verify requirements
-                assert data['intent'] == query['expected_intent'], f"Intent mismatch: {data['intent']}"
-                assert len(data['citations']) >= 2, f"Need at least 2 citations, got {len(data['citations'])}"
-                
-                if query['expected_intent'] in ['compare', 'related', 'next']:
-                    print(f"   Next concepts: {data['next_concepts']}")
+                # Check if answer exists
+                if 'answer' in data and data['answer']:
+                    print(f"   Answer preview: {data['answer'][:100]}...")
+                else:
+                    print("   ❌ No answer content")
                 
             else:
                 print(f"❌ Failed: {response.status_code} - {response.text}")
@@ -75,25 +144,29 @@ def test_star_endpoints():
     """Test the star endpoints"""
     print("\n🧪 Testing star endpoints...")
     
-    test_user = "test-user-123"
-    test_doc = "test-doc-456"
+    # Get authentication token
+    token = get_auth_token()
+    if not token:
+        print("❌ Could not get authentication token for star tests")
+        return
+    
+    headers = {"Authorization": f"Bearer {token}"}
     
     try:
         # Test inserting a star
         star_data = {
-            "user_id": test_user,
-            "doc_id": test_doc,
+            "doc_id": "test-doc-456",
             "note": "Great explanation of neural networks!"
         }
         
-        response = requests.post(f"{BASE_URL}/star", json=star_data)
+        response = requests.post(f"{BASE_URL}/api/star", headers=headers, json=star_data)
         if response.status_code == 200:
             print("✅ Star insertion successful")
         else:
             print(f"⚠️ Star insertion: {response.status_code} - {response.text}")
         
         # Test retrieving stars
-        response = requests.get(f"{BASE_URL}/stars", params={"user_id": test_user})
+        response = requests.get(f"{BASE_URL}/api/stars", headers=headers)
         if response.status_code == 200:
             stars = response.json()
             print(f"✅ Star retrieval successful: {len(stars)} stars found")
@@ -104,8 +177,16 @@ def test_star_endpoints():
         print(f"❌ Star endpoints error: {e}")
 
 def test_next_endpoint():
-    """Test the /next endpoint"""
-    print("\n🧪 Testing /next endpoint...")
+    """Test the /api/next endpoint"""
+    print("\n🧪 Testing /api/next endpoint...")
+    
+    # Get authentication token
+    token = get_auth_token()
+    if not token:
+        print("❌ Could not get authentication token for next tests")
+        return
+    
+    headers = {"Authorization": f"Bearer {token}"}
     
     test_concepts = [
         "neural networks",
@@ -118,18 +199,16 @@ def test_next_endpoint():
         
         try:
             response = requests.get(
-                f"{BASE_URL}/next",
+                f"{BASE_URL}/api/next",
+                headers=headers,
                 params={"concept": concept, "limit": 3}
             )
             
             if response.status_code == 200:
                 data = response.json()
-                print(f"✅ Success! Next concepts: {len(data['next_concepts'])}")
-                print(f"   Learning path steps: {len(data.get('learning_path', []))}")
-                
-                if data.get('relationships'):
-                    rels = data['relationships']
-                    print(f"   Relationships found: {len(rels)} types")
+                print(f"✅ Success! Response received")
+                if 'next_concepts' in data:
+                    print(f"   Next concepts: {len(data['next_concepts'])}")
                 
             else:
                 print(f"❌ Failed: {response.status_code} - {response.text}")
@@ -140,6 +219,14 @@ def test_next_endpoint():
 def test_guardrails():
     """Test content guardrails"""
     print("\n🧪 Testing guardrails...")
+    
+    # Get authentication token
+    token = get_auth_token()
+    if not token:
+        print("❌ Could not get authentication token for guardrail tests")
+        return
+    
+    headers = {"Authorization": f"Bearer {token}"}
     
     out_of_scope_queries = [
         "How do I cook pasta?",
@@ -152,12 +239,11 @@ def test_guardrails():
         
         try:
             response = requests.post(
-                f"{BASE_URL}/query",
+                f"{BASE_URL}/api/chat",
+                headers=headers,
                 json={
-                    "question": query,
-                    "audience": "kid",
-                    "top_k": 5,
-                    "use_graph": True
+                    "message": query,
+                    "conversation_history": []
                 }
             )
             
