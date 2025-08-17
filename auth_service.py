@@ -12,6 +12,19 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Fix SSL certificate issues for Railway deployment
+import ssl
+import certifi
+import os
+
+# Set SSL certificate paths for Railway
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+os.environ['SSL_CERT_FILE'] = certifi.where()
+
+# Create SSL context with proper certificates
+ssl_context = ssl.create_default_context(cafile=certifi.where())
+ssl._create_default_https_context = lambda: ssl_context
+
 # Password hashing context for secure password storage
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
