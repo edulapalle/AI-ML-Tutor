@@ -50,29 +50,59 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         MILVUS_URI: ${{ secrets.MILVUS_URI }}
         MILVUS_TOKEN: ${{ secrets.MILVUS_TOKEN }}
+        NEO4J_URI: ${{ secrets.NEO4J_URI }}
+        NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME }}
+        NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+        SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
         ENABLE_RERANKING: "true"
         RERANKING_MODEL: "o3"
       run: |
-        echo "🧪 Running RAG backend tests..."
-        if ! python test_rag_backend.py; then
-          echo "❌ RAG backend tests failed"
-          exit 1
-        fi
-        echo "✅ RAG backend tests passed"
+        echo "🎯 Running COMPREHENSIVE TEST SUITE for AI/ML Educational Platform"
+        echo "=" * 80
         
-        echo "🧪 Running integration tests..."
-        if ! python test_integration_comprehensive.py; then
-          echo "❌ Integration tests failed"
+        # Run quick essential tests first for fast feedback
+        echo "🚀 Running quick tests (auth, rag, security)..."
+        if python run_comprehensive_tests.py --quick; then
+          echo "✅ Quick tests passed, running full suite..."
+          
+          # Run full comprehensive test suite
+          echo "🧪 Running complete test suite..."
+          python run_comprehensive_tests.py
+        else
+          echo "❌ Quick tests failed, skipping full suite"
           exit 1
         fi
-        echo "✅ Integration tests passed"
         
-        echo "🧪 Running data quality tests..."
-        if ! python test_data_quality.py; then
-          echo "❌ Data quality tests failed"
-          exit 1
-        fi
-        echo "✅ Data quality tests passed"
+    - name: Test individual test suites (for debugging)
+      if: failure() # Only run if main tests failed
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        MILVUS_URI: ${{ secrets.MILVUS_URI }}
+        MILVUS_TOKEN: ${{ secrets.MILVUS_TOKEN }}
+        NEO4J_URI: ${{ secrets.NEO4J_URI }}
+        NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME }}
+        NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      run: |
+        echo "🔍 Running individual test suites for debugging..."
+        
+        # Test each suite individually to identify failures
+        for suite in auth rag security features; do
+          echo "Testing $suite suite..."
+          if python run_comprehensive_tests.py --suite $suite; then
+            echo "✅ $suite suite passed"
+          else
+            echo "❌ $suite suite failed"
+          fi
+          echo "---"
+        done
         
     - name: Test API endpoints
       env:
