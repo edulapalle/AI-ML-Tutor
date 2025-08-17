@@ -264,7 +264,8 @@ class EmailService:
             "week_end": weekly_data["week_end"].strftime("%B %d, %Y"),
             "age_group": user.get("age_group", "student"),
             "username": user.get("username", "Learner"),
-            "current_year": datetime.now().year
+            "current_year": datetime.now().year,
+            "app_url": os.getenv("RAILWAY_PUBLIC_DOMAIN", "https://your-app.railway.app")
         }
         
         try:
