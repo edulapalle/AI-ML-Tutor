@@ -2,7 +2,7 @@
 import os
 import jwt
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from passlib.context import CryptContext
 from supabase import create_client, Client
@@ -18,9 +18,10 @@ import ssl
 import certifi
 import os
 
-# Set SSL certificate paths for Railway
-os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-os.environ['SSL_CERT_FILE'] = certifi.where()
+# REMOVED HERE NOW ONLY AVAILABLE IN APP.PY
+# # Set SSL certificate paths for Railway
+# os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+# os.environ['SSL_CERT_FILE'] = certifi.where()
 
 # Create SSL context with proper certificates
 ssl_context = ssl.create_default_context(cafile=certifi.where())
