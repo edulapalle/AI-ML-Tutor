@@ -55,8 +55,14 @@ SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 COLL_RICH_EDUCATION = "rich_ml_education"
 COLL_YOUTUBE_VIDEOS = "youtube_creator_videos"
 
-# Initialize clients
-oai = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+# Initialize clients with error handling
+try:
+    oai = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+    print(f"✅ OpenAI client initialized: {'Yes' if oai else 'No (missing API key)'}")
+except Exception as e:
+    print(f"⚠️ OpenAI client failed to initialize: {e}")
+    oai = None
+
 security = HTTPBearer()
 
 # Initialize agentic learning system
@@ -1879,14 +1885,66 @@ async def get_content_suggestions(current_user: UserProfile = Depends(get_curren
 
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint"""
-    return {
+    """Railway-friendly health check endpoint"""
+    health_status = {
         "status": "healthy",
-        "milvus": connect_milvus(),
-        "neo4j": test_neo4j_connection(),
-        "openai": oai is not None,
-        "agentic_system": agentic_system is not None
+        "platform": "railway",
+        "timestamp": datetime.now().isoformat(),
+        "services": {}
     }
+    
+    # Check OpenAI (critical for basic functionality)
+    try:
+        health_status["services"]["openai"] = {
+            "status": "available" if (oai is not None and OPENAI_API_KEY) else "missing_api_key",
+            "critical": True
+        }
+    except Exception as e:
+        health_status["services"]["openai"] = {
+            "status": f"error: {str(e)}",
+            "critical": True
+        }
+    
+    # Check Milvus (optional - doesn't fail health check)
+    try:
+        milvus_status = connect_milvus()
+        health_status["services"]["milvus"] = {
+            "status": "connected" if milvus_status else "disconnected",
+            "critical": False
+        }
+    except Exception as e:
+        health_status["services"]["milvus"] = {
+            "status": f"error: {str(e)}",
+            "critical": False
+        }
+    
+    # Check Neo4j (optional - doesn't fail health check)
+    try:
+        neo4j_status = test_neo4j_connection()
+        health_status["services"]["neo4j"] = {
+            "status": "connected" if neo4j_status else "disconnected",
+            "critical": False
+        }
+    except Exception as e:
+        health_status["services"]["neo4j"] = {
+            "status": f"error: {str(e)}",
+            "critical": False
+        }
+    
+    # Check agentic system
+    health_status["services"]["agentic_system"] = {
+        "status": "initialized" if agentic_system is not None else "not_initialized",
+        "critical": False
+    }
+    
+    # Overall health is good if OpenAI is available
+    if health_status["services"]["openai"]["status"] == "available":
+        health_status["status"] = "healthy"
+    else:
+        health_status["status"] = "degraded"
+        health_status["message"] = "Basic AI chat available, but some features may be limited"
+    
+    return health_status
 
 # ================================= EMAIL ENDPOINTS =================================
 
