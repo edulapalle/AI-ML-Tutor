@@ -194,6 +194,19 @@ async def add_security_headers(request: Request, call_next):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# Configure FastAPI to generate HTTPS URLs when behind Railway proxy
+@app.middleware("http")
+async def force_https_urls(request: Request, call_next):
+    """Force HTTPS URLs in templates when behind Railway proxy"""
+    # Check if we're behind Railway proxy
+    if (request.headers.get("x-forwarded-proto") == "https" or 
+        request.headers.get("host", "").endswith(".railway.app")):
+        # Modify the request to appear as HTTPS for url_for generation
+        request.scope["scheme"] = "https"
+    
+    response = await call_next(request)
+    return response
+
 # Initialize authentication service
 auth_service = AuthService()
 

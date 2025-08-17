@@ -2,7 +2,96 @@
 
 **Project**: AI Bootcamp Capstone Project  
 **Author**: Santosh Edulapalle  
-**Last Updated**: August 16, 2025
+**Last Updated**: August 17, 2025
+
+---
+
+## 📅 August 17, 2025
+
+### 🚂 **CRITICAL: Railway Health Check & CSS Loading Issues RESOLVED** *(6:30 AM)*
+
+**Issue**: After successful Railway deployment, encountered two critical production issues:
+1. **Health Check Failure**: Railway health checks returning 307 redirects instead of 200 OK
+2. **CSS Not Loading**: Beautiful UI replaced with unstyled HTML due to mixed content blocking
+
+**✅ Root Causes Identified & Fixed**:
+
+#### **1. Health Check 307 Redirect Loop**
+- **Problem**: Custom HTTPS redirect middleware redirecting `/health` endpoint from HTTP→HTTPS
+- **Impact**: Railway health checker can't follow redirects, sees 307 as failure
+- **Railway Logs**: `INFO: GET /health HTTP/1.1" 307 Temporary Redirect` (repeated failures)
+- **Fix**: Removed HTTPS redirect entirely since Railway handles SSL termination at proxy level
+
+#### **2. CSS Mixed Content Blocking**  
+- **Problem**: FastAPI `url_for()` generating HTTP URLs instead of HTTPS URLs
+- **Impact**: Browser blocks HTTP CSS on HTTPS pages (mixed content security)
+- **HTML Generated**: `<link href="http://web-production-ff950.up.railway.app/static/css/dashboard.css">`
+- **Fix**: Added proxy-aware middleware + JavaScript fallback to force HTTPS URLs
+
+**✅ Technical Solutions Implemented**:
+
+#### **Health Check Fix**:
+```python
+# Before: HTTPS redirect causing 307 loop
+@app.middleware("http")
+async def custom_https_redirect(request, call_next):
+    if request.url.scheme == "http":
+        return RedirectResponse(https_url, status_code=301)  # ❌ LOOP
+
+# After: Railway handles HTTPS termination
+railway_env = os.getenv("RAILWAY_ENVIRONMENT_NAME") 
+if railway_env:
+    print("✅ Railway deployment detected - HTTPS handled by Railway proxy")
+```
+
+#### **CSS Loading Fix** (Multi-Layer Approach):
+```python
+# Backend: Proxy-aware URL generation
+@app.middleware("http")
+async def force_https_urls(request: Request, call_next):
+    if (request.headers.get("x-forwarded-proto") == "https" or 
+        request.headers.get("host", "").endswith(".railway.app")):
+        request.scope["scheme"] = "https"  # Make FastAPI think it's HTTPS
+```
+
+```javascript
+// Frontend: JavaScript fallback
+document.addEventListener('DOMContentLoaded', function() {
+    var links = document.querySelectorAll('link[rel="stylesheet"]');
+    links.forEach(function(link) {
+        if (link.href.startsWith('http://') && window.location.protocol === 'https:') {
+            link.href = link.href.replace('http://', 'https://');
+        }
+    });
+});
+```
+
+**✅ Files Modified**:
+- `app.py`: Removed HTTPS redirect, added proxy-aware URL middleware
+- `templates/dashboard.html`: Added JavaScript HTTP→HTTPS link fixing
+- `railway.toml`: Optimized health check timeout settings
+
+**✅ New Debugging Tools Created**:
+- `railway_comprehensive_debug.py`: Complete Railway deployment diagnostics
+- `RAILWAY_HEALTH_CHECK_FIX.md`: Health check 307 redirect fix guide  
+- `RAILWAY_CSS_HTTPS_FIX.md`: CSS HTTPS loading fix guide
+- `RAILWAY_DEPLOYMENT_CHECKLIST.md`: Step-by-step deployment guide
+- `test_health_redirect.py`: Health check redirect testing
+- `test_no_redirect_loop.py`: Redirect loop prevention testing
+
+**🎯 Impact**: 
+- **Health Checks**: Now consistently return 200 OK, Railway deployment stable
+- **CSS Loading**: Beautiful child-friendly UI fully restored with proper styling
+- **Security**: Maintained HTTPS security while fixing mixed content issues
+- **Reliability**: Eliminated intermittent deployment failures
+
+**📊 Production Results**:
+- ✅ Railway health check: `GET /health HTTP/1.1" 200 OK`
+- ✅ CSS accessible: `https://web-production-ff950.up.railway.app/static/css/dashboard.css`
+- ✅ Beautiful UI: Gradient backgrounds, proper fonts, three-panel layout
+- ✅ Icons working: Font Awesome + emoji fallbacks (🧠, 👤, ⚙️)
+
+**📁 Technical Architecture**: Railway's proxy-terminated HTTPS requires apps to be proxy-aware for URL generation but not handle HTTPS redirects themselves.
 
 ---
 

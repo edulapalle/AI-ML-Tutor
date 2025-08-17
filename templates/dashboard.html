@@ -6,6 +6,19 @@
     <title>AI/ML Learning Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/dashboard.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
+    <!-- Fallback CSS link in case url_for generates HTTP -->
+    <script>
+        // Fix HTTP CSS links to HTTPS if needed
+        document.addEventListener('DOMContentLoaded', function() {
+            var links = document.querySelectorAll('link[rel="stylesheet"]');
+            links.forEach(function(link) {
+                if (link.href.startsWith('http://') && window.location.protocol === 'https:') {
+                    link.href = link.href.replace('http://', 'https://');
+                    console.log('Fixed CSS link to HTTPS:', link.href);
+                }
+            });
+        });
+    </script>
     <!-- Fallback for Font Awesome if CDN fails -->
     <style>
         .fa, .fas, .far, .fab {
@@ -296,5 +309,23 @@
         </div>
     </div>
     <script src="{{ url_for('static', path='/js/dashboard.js') }}"></script>
+    <script>
+        // Fix HTTP static file links to HTTPS if needed (for JS files loaded after DOM)
+        document.addEventListener('DOMContentLoaded', function() {
+            var scripts = document.querySelectorAll('script[src]');
+            scripts.forEach(function(script) {
+                if (script.src.startsWith('http://') && window.location.protocol === 'https:') {
+                    var newSrc = script.src.replace('http://', 'https://');
+                    var newScript = document.createElement('script');
+                    newScript.src = newSrc;
+                    newScript.onload = function() {
+                        console.log('Fixed JS link to HTTPS:', newSrc);
+                        script.remove();
+                    };
+                    script.parentNode.insertBefore(newScript, script.nextSibling);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
