@@ -1,12 +1,12 @@
 # Authentication models for user registration and login system
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, EmailStr
 from typing import List, Optional
 from datetime import date, datetime
 
 class UserRegistration(BaseModel):
     """User registration model with comprehensive study-related information"""
     username: str = Field(..., min_length=3, max_length=50, description="Unique username for the user")
-    email: str = Field(..., description="User's email address for account verification")
+    email: EmailStr = Field(..., description="User's email address for account verification")
     password: str = Field(..., min_length=8, description="Secure password for account access")
     date_of_birth: date = Field(..., description="User's date of birth for age-appropriate content")
     topics_of_interest: List[str] = Field(..., description="List of subjects/topics the user is interested in learning")
@@ -17,7 +17,7 @@ class UserRegistration(BaseModel):
 
 class UserLogin(BaseModel):
     """User login model for authentication"""
-    email: str = Field(..., description="User's email address")
+    email: EmailStr = Field(..., description="User's email address")
     password: str = Field(..., description="User's password")
 
 class UserProfile(BaseModel):
