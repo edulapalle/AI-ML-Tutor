@@ -127,28 +127,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add security middleware for Railway deployment (conditionally)
+# Railway handles HTTPS termination at the proxy level, so no redirect needed
 railway_env = os.getenv("RAILWAY_ENVIRONMENT_NAME") 
-if railway_env and railway_env.lower() == "production":  # Only in Railway production
-    try:
-        # Custom HTTPS redirect that excludes health checks
-        @app.middleware("http")
-        async def custom_https_redirect(request: Request, call_next):
-            # Skip HTTPS redirect for health checks
-            if request.url.path in ["/health", "/api/health"]:
-                return await call_next(request)
-            
-            # For other paths, enforce HTTPS in production
-            if request.url.scheme == "http":
-                https_url = request.url.replace(scheme="https")
-                from fastapi.responses import RedirectResponse
-                return RedirectResponse(https_url, status_code=301)
-            
-            return await call_next(request)
-        
-        print("✅ Custom HTTPS redirect middleware enabled (excludes health checks)")
-    except Exception as e:
-        print(f"⚠️ HTTPS middleware failed to load: {e}")
+if railway_env:
+    print("✅ Railway deployment detected - HTTPS handled by Railway proxy")
 
 # Add CORS middleware
 app.add_middleware(
