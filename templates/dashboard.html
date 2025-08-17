@@ -5,7 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI/ML Learning Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/dashboard.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
+    <!-- Fallback for Font Awesome if CDN fails -->
+    <style>
+        .fa, .fas, .far, .fab {
+            font-family: Arial, sans-serif;
+        }
+        .fa-brain::before { content: "🧠"; }
+        .fa-user::before { content: "👤"; }
+        .fa-cog::before { content: "⚙️"; }
+        .fa-star::before { content: "⭐"; }
+        .fa-bookmark::before { content: "🔖"; }
+        .fa-lightbulb::before { content: "💡"; }
+        .fa-robot::before { content: "🤖"; }
+        .fa-search::before { content: "🔍"; }
+        .fa-paper-plane::before { content: "📤"; }
+        .fa-spinner::before { content: "⏳"; }
+    </style>
 </head>
 <body>
     <!-- Header -->

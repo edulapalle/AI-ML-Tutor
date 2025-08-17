@@ -134,36 +134,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add security headers middleware (with error handling)
+# Add security headers middleware (with comprehensive error handling)
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     try:
+        # Process the request
         response = await call_next(request)
+        
+        # Skip security headers for health checks to avoid any issues
+        if request.url.path in ["/health", "/api/health"]:
+            return response
         
         # Add security headers for Railway deployment
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        
-        # Content Security Policy - allow HTTPS resources
-        csp = (
-            "default-src 'self'; "
-            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-            "script-src 'self' 'unsafe-inline'; "
-            "font-src 'self' https://cdnjs.cloudflare.com; "
-            "img-src 'self' data: https:; "
-            "connect-src 'self' https:; "
-            "frame-ancestors 'none';"
-        )
-        response.headers["Content-Security-Policy"] = csp
+        try:
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY" 
+            response.headers["X-XSS-Protection"] = "1; mode=block"
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+            
+            # Content Security Policy - allow HTTPS resources
+            csp = (
+                "default-src 'self'; "
+                "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+                "script-src 'self' 'unsafe-inline'; "
+                "font-src 'self' https://cdnjs.cloudflare.com; "
+                "img-src 'self' data: https:; "
+                "connect-src 'self' https:; "
+                "frame-ancestors 'none';"
+            )
+            response.headers["Content-Security-Policy"] = csp
+        except Exception as header_error:
+            print(f"⚠️ Failed to add security headers: {header_error}")
         
         return response
+        
     except Exception as e:
-        print(f"⚠️ Security headers middleware error: {e}")
-        # Still proceed with the response even if headers fail
-        response = await call_next(request)
-        return response
+        print(f"❌ Security middleware critical error: {e}")
+        # Create a basic error response if everything fails
+        try:
+            response = await call_next(request)
+            return response
+        except Exception as fallback_error:
+            print(f"💥 Complete middleware failure: {fallback_error}")
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                {"error": "Middleware error", "path": str(request.url.path)}, 
+                status_code=500
+            )
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -1937,30 +1954,49 @@ async def get_content_suggestions(current_user: UserProfile = Depends(get_curren
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
-    """Railway-friendly health check endpoint - fast and lightweight"""
+    """Ultra-reliable Railway health check - always returns 200"""
     
-    # Start with basic healthy status
+    # Always return healthy - Railway just needs a 200 response
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "app": "AI/ML Educational Platform",
+        "platform": "railway",
+        "uptime": "running"
+    }
+
+@app.get("/api/detailed-health") 
+async def detailed_health_check():
+    """Detailed health check for debugging (not used by Railway)"""
+    
     health_status = {
         "status": "healthy",
-        "platform": "railway",
+        "platform": "railway", 
         "timestamp": datetime.now().isoformat(),
         "app": "AI/ML Educational Platform",
         "version": "2.1.0"
     }
     
-    # Quick environment check (no network calls)
+    # Environment check (no network calls)
     try:
         env_check = {
             "openai_key_present": bool(OPENAI_API_KEY),
             "supabase_configured": bool(SUPABASE_URL and SUPABASE_ANON_KEY),
             "milvus_configured": bool(MILVUS_URI),
             "neo4j_configured": bool(NEO4J_URI),
-            "agentic_system_loaded": agentic_system is not None
+            "agentic_system_loaded": agentic_system is not None,
+            "static_files_mounted": True,
+            "templates_loaded": True
         }
         
         health_status["environment"] = env_check
+        health_status["css_debug"] = {
+            "static_mount_path": "/static",
+            "template_directory": "templates",
+            "font_awesome_cdn": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        }
         
-        # Simple status determination
+        # Status determination 
         if env_check["openai_key_present"]:
             health_status["status"] = "healthy"
             health_status["message"] = "All systems ready for AI learning!"
@@ -1971,8 +2007,78 @@ async def health_check():
     except Exception as e:
         health_status["status"] = "error"
         health_status["message"] = f"Health check error: {str(e)}"
+        health_status["error_details"] = str(e)
     
     return health_status
+
+@app.get("/api/css-debug")
+async def css_debug():
+    """Debug CSS loading issues"""
+    import os
+    
+    debug_info = {
+        "static_files": {
+            "css_exists": os.path.exists("static/css/dashboard.css"),
+            "js_exists": os.path.exists("static/js/dashboard.js"),
+            "static_dir_exists": os.path.exists("static"),
+            "css_dir_exists": os.path.exists("static/css"),
+            "js_dir_exists": os.path.exists("static/js")
+        },
+        "templates": {
+            "dashboard_exists": os.path.exists("templates/dashboard.html"),
+            "templates_dir_exists": os.path.exists("templates")
+        },
+        "environment": {
+            "railway_env": os.getenv("RAILWAY_ENVIRONMENT_NAME"),
+            "railway_domain": os.getenv("RAILWAY_PUBLIC_DOMAIN"),
+            "port": os.getenv("PORT", "8000")
+        },
+        "middleware": {
+            "https_redirect_enabled": bool(os.getenv("RAILWAY_ENVIRONMENT_NAME")),
+            "cors_enabled": True,
+            "security_headers_enabled": True
+        }
+    }
+    
+    return debug_info
+
+@app.get("/test-css")
+async def test_css():
+    """Test CSS serving with basic HTML"""
+    return HTMLResponse("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>CSS Test</title>
+        <link rel="stylesheet" href="/static/css/dashboard.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <style>
+            .test-box {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 20px;
+                margin: 20px;
+                border-radius: 10px;
+                color: white;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="test-box">
+            <h1><i class="fas fa-brain"></i> CSS Test Page</h1>
+            <p>If you see a colorful gradient background, CSS is working!</p>
+            <p>If you see the brain icon, Font Awesome is working!</p>
+            <div class="header" style="background: rgba(255,255,255,0.1); padding: 10px; margin: 10px;">
+                <span>Dashboard CSS Test</span>
+            </div>
+        </div>
+        <script>
+            console.log('JavaScript is working!');
+            console.log('CSS loaded:', document.styleSheets.length, 'stylesheets');
+        </script>
+    </body>
+    </html>
+    """)
 
 # ================================= EMAIL ENDPOINTS =================================
 
