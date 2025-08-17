@@ -1,6 +1,7 @@
 # Authentication service for Supabase integration and user management
 import os
 import jwt
+import json
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from passlib.context import CryptContext
@@ -195,5 +196,4 @@ class AuthService:
             print(f"Error updating user profile: {e}")
             return False
 
-# Import json for JSON serialization
-import json
+# JSON import moved to top of file

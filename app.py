@@ -60,13 +60,26 @@ COLL_YOUTUBE_VIDEOS = "youtube_creator_videos"
 # Initialize clients with error handling
 try:
     if OPENAI_API_KEY:
-        oai = OpenAI(api_key=OPENAI_API_KEY)
-        print(f"✅ OpenAI client initialized successfully")
+        # Test if API key is valid format
+        if not OPENAI_API_KEY.startswith('sk-'):
+            print(f"⚠️ OpenAI API key format invalid (should start with 'sk-')")
+            oai = None
+        else:
+            # Initialize OpenAI client with error handling
+            oai = OpenAI(api_key=OPENAI_API_KEY)
+            print(f"✅ OpenAI client initialized successfully")
     else:
         oai = None
         print(f"⚠️ OpenAI client not configured (missing API key)")
+except FileNotFoundError as e:
+    print(f"⚠️ OpenAI client file error: {e}")
+    print("   This may be due to missing certificates or SSL configuration")
+    oai = None
 except Exception as e:
     print(f"⚠️ OpenAI client failed to initialize: {e}")
+    print(f"   Error type: {type(e).__name__}")
+    print(f"   API key present: {bool(OPENAI_API_KEY)}")
+    print(f"   API key format: {OPENAI_API_KEY[:10] + '...' if OPENAI_API_KEY else 'None'}")
     oai = None
 
 security = HTTPBearer()
@@ -106,12 +119,15 @@ async def lifespan(app: FastAPI):
             print("🤖 Agentic Learning System initialized successfully")
         else:
             print("⚠️ Agentic Learning System skipped (OpenAI not available)")
+            print("   💡 App will work without AI features - basic functionality available")
             agentic_system = None
     except FileNotFoundError as e:
         print(f"⚠️ Agentic Learning System file error (continuing without it): {e}")
+        print("   💡 This is usually due to missing dependencies or file paths")
         agentic_system = None
     except Exception as e:
         print(f"⚠️ Agentic Learning System failed to initialize: {e}")
+        print(f"   📝 Error type: {type(e).__name__}")
         agentic_system = None
     
     yield
@@ -1143,6 +1159,16 @@ async def login_page(request: Request):
 async def register_page(request: Request):
     """Registration page"""
     return templates.TemplateResponse("register.html", {"request": request})
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_page(request: Request):
+    """Terms of service page"""
+    return templates.TemplateResponse("terms.html", {"request": request})
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    """Privacy policy page"""
+    return templates.TemplateResponse("privacy.html", {"request": request})
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_redirect(request: Request):
