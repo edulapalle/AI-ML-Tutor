@@ -268,33 +268,6 @@ class ChatApp {
         return formatted;
     }
 
-    showTypingIndicator() {
-        const chatMessages = document.getElementById('chatMessages');
-        const typingDiv = document.createElement('div');
-        typingDiv.className = 'message assistant typing-indicator';
-        typingDiv.id = 'typingIndicator';
-        
-        typingDiv.innerHTML = `
-            <div class="message-content">
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-            </div>
-        `;
-        
-        chatMessages.appendChild(typingDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    hideTypingIndicator() {
-        const typingIndicator = document.getElementById('typingIndicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
-        }
-    }
-
     updateSources(sources) {
         const sourcesList = document.getElementById('sourcesList');
         if (!sourcesList) return;
