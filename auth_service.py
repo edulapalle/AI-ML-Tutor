@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from supabase import create_client, Client
 from auth_models import UserRegistration, UserLogin, UserProfile, UserSession
 from dotenv import load_dotenv
+import traceback 
 
 # Load environment variables
 load_dotenv()
