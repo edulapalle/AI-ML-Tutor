@@ -15,11 +15,11 @@ jobs:
         run: |
           echo "🔍 Checking for new StatQuest videos..."
           
-          # Call your Vercel endpoint to check for new videos
+          # Call your Railway endpoint to check for new videos
           response=$(curl -s -w "\n%{http_code}" \
             -X POST \
             -H "Content-Type: application/json" \
-            "${{ secrets.VERCEL_APP_URL }}/api/youtube/process")
+            "${{ secrets.RAILWAY_APP_URL }}/api/youtube/process")
           
           # Extract response body and status code
           http_code=$(echo "$response" | tail -n1)
@@ -41,6 +41,6 @@ jobs:
           echo "📊 Getting monitoring status..."
           
           status_response=$(curl -s \
-            "${{ secrets.VERCEL_APP_URL }}/api/youtube/status")
+            "${{ secrets.RAILWAY_APP_URL }}/api/youtube/status")
           
           echo "📈 Status: $status_response"

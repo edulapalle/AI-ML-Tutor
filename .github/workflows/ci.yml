@@ -63,7 +63,7 @@ jobs:
         import asyncio
         import sys
         sys.path.insert(0, '.')
-        from index import app
+        from app import app
         from fastapi.testclient import TestClient
         
         client = TestClient(app)
