@@ -1,28 +1,28 @@
-# Core FastAPI dependencies
+# Full-featured deployment for Railway (no size limits!)
 fastapi
 uvicorn[standard]
 openai
 python-dotenv
 mmh3
 
-# Vector database (lightweight for production)
+# Vector database and ML processing
 pymilvus
 
-# Web and API clients (minimal set)
-httpx  # HTTP client for async API calls
-requests  # Keep for compatibility
+# Web and API clients
+httpx
+requests
 
 # Web templating
 jinja2
 
 # Database connections
-neo4j  # Neo4j database driver
-supabase  # Supabase client
+neo4j
+supabase
 
-# Authentication and security (essential only)
+# Authentication and security
 python-jose[cryptography]
-passlib[bcrypt]==1.7.4
-bcrypt==4.0.1
+passlib[bcrypt]
+bcrypt
 python-multipart
 email-validator
 

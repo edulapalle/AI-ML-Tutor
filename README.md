@@ -358,25 +358,31 @@ vercel --prod
 # ✅ Environment isolation
 ```
 
-### **🚀 Vercel Deployment (Recommended)**
+### **🚂 Railway Deployment (Recommended)**
 ```bash
-# 1. Install Vercel CLI
-npm install -g vercel
+# 1. Deploy via GitHub (Recommended)
+# - Push your code to GitHub
+# - Connect repository in Railway dashboard
+# - Railway auto-deploys on every push
 
-# 2. Deploy to Vercel
-vercel
+# 2. Or deploy via Railway CLI
+npm install -g @railway/cli
+railway login
+railway init
+railway up
 
-# 3. Set environment variables in Vercel Dashboard
+# 3. Set environment variables in Railway Dashboard
 # - OPENAI_API_KEY, SUPABASE_URL, MILVUS_URI, etc.
 
 # Features:
-# ✅ Global CDN with 99.99% uptime
-# ✅ Serverless auto-scaling
-# ✅ Zero maintenance deployment
-# ✅ Built-in SSL and security
+# ✅ No size limits (full 1GB+ app deploys)
+# ✅ Background processes (YouTube monitoring)
+# ✅ More memory and CPU resources
+# ✅ Persistent storage and databases
+# ✅ Cost effective ($5/month)
 ```
 
-**📖 Complete Deployment Guide**: See `VERCEL_DEPLOYMENT_GUIDE.md`
+**📖 Complete Deployment Guide**: See `RAILWAY_DEPLOYMENT_GUIDE.md`
 
 ### **📧 Email System (SendGrid)**
 ```bash
@@ -419,7 +425,7 @@ python app.py
 - **Email Service**: SendGrid API with analytics
 - **Security**: Custom abuse protection middleware
 - **API**: RESTful with OpenAPI documentation
-- **Deployment**: Vercel serverless platform
+- **Deployment**: Railway cloud platform
 
 ### **🌐 Frontend Technologies**
 - **Templates**: Jinja2 HTML templates
@@ -438,7 +444,7 @@ python app.py
 
 ### **📖 Documentation**
 - **README.md**: Complete project overview (this file)
-- **VERCEL_DEPLOYMENT_GUIDE.md**: Complete Vercel deployment instructions
+- **RAILWAY_DEPLOYMENT_GUIDE.md**: Complete Railway deployment instructions
 - **SENDGRID_MIGRATION.md**: SendGrid email setup and configuration
 - **DEVELOPMENT_NOTES.md**: Detailed change log with timestamps
 - **TESTING_GUIDE.md**: Comprehensive testing procedures
@@ -447,15 +453,17 @@ python app.py
 ### **📁 Project Structure**
 ```
 rag-vercel-example/
-├── api/
-│   └── index.py              # Vercel serverless entry point
 ├── app.py                    # Main FastAPI application
 ├── email_service.py          # SendGrid email integration
-├── vercel.json              # Vercel deployment configuration
-├── requirements.txt         # Python dependencies
+├── railway.toml             # Railway deployment configuration
+├── Procfile                 # Railway process definition
+├── requirements.txt         # Python dependencies (full features)
 ├── static/                  # CSS, JS, assets
 ├── templates/               # HTML templates
 ├── email_templates/         # Email HTML templates
+├── agentic_learning_system.py # AI learning agents
+├── auth_service.py          # Authentication system
+├── protection_middleware.py  # Abuse protection
 └── test_*.py               # Comprehensive test suite
 ```
 
@@ -500,6 +508,6 @@ rag-vercel-example/
 | **Testing Suite** | ✅ Production | 85% | Comprehensive test coverage |
 | **Documentation** | ✅ Complete | 100% | Full project documentation |
 
-**Last Updated**: August 15, 2025  
-**Version**: 2.0.0 Production Release  
-**Status**: 🚀 **Production Ready** | 🛡️ **Security Hardened** | 🧪 **Comprehensively Tested** 
+**Last Updated**: August 16, 2025  
+**Version**: 2.1.0 Railway Production Release  
+**Status**: 🚂 **Railway Optimized** | 🚀 **Production Ready** | 🛡️ **Security Hardened** | 🧪 **Comprehensively Tested** 

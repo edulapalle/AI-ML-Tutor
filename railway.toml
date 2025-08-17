@@ -1,0 +1,20 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+
+[[services]]
+name = "ai-learning-platform"
+
+[services.variables]
+PORT = "8000"
+PYTHONPATH = "/app"
+
+[services.healthcheck]
+path = "/api/health"
+interval = 30
+timeout = 10
+retries = 3
