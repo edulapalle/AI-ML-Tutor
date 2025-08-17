@@ -59,8 +59,12 @@ COLL_YOUTUBE_VIDEOS = "youtube_creator_videos"
 
 # Initialize clients with error handling
 try:
-    oai = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
-    print(f"✅ OpenAI client initialized: {'Yes' if oai else 'No (missing API key)'}")
+    if OPENAI_API_KEY:
+        oai = OpenAI(api_key=OPENAI_API_KEY)
+        print(f"✅ OpenAI client initialized successfully")
+    else:
+        oai = None
+        print(f"⚠️ OpenAI client not configured (missing API key)")
 except Exception as e:
     print(f"⚠️ OpenAI client failed to initialize: {e}")
     oai = None
@@ -95,10 +99,17 @@ async def lifespan(app: FastAPI):
     else:
         print("⚠️ OpenAI client not configured")
     
-    # Initialize agentic learning system
+    # Initialize agentic learning system (with better error handling)
     try:
-        agentic_system = AgenticLearningSystem()
-        print("🤖 Agentic Learning System initialized")
+        if oai is not None:  # Only initialize if OpenAI is available
+            agentic_system = AgenticLearningSystem()
+            print("🤖 Agentic Learning System initialized successfully")
+        else:
+            print("⚠️ Agentic Learning System skipped (OpenAI not available)")
+            agentic_system = None
+    except FileNotFoundError as e:
+        print(f"⚠️ Agentic Learning System file error (continuing without it): {e}")
+        agentic_system = None
     except Exception as e:
         print(f"⚠️ Agentic Learning System failed to initialize: {e}")
         agentic_system = None
@@ -120,8 +131,22 @@ app = FastAPI(
 railway_env = os.getenv("RAILWAY_ENVIRONMENT_NAME") 
 if railway_env and railway_env.lower() == "production":  # Only in Railway production
     try:
-        app.add_middleware(HTTPSRedirectMiddleware)
-        print("✅ HTTPS redirect middleware enabled for Railway production")
+        # Custom HTTPS redirect that excludes health checks
+        @app.middleware("http")
+        async def custom_https_redirect(request: Request, call_next):
+            # Skip HTTPS redirect for health checks
+            if request.url.path in ["/health", "/api/health"]:
+                return await call_next(request)
+            
+            # For other paths, enforce HTTPS in production
+            if request.url.scheme == "http":
+                https_url = request.url.replace(scheme="https")
+                from fastapi.responses import RedirectResponse
+                return RedirectResponse(https_url, status_code=301)
+            
+            return await call_next(request)
+        
+        print("✅ Custom HTTPS redirect middleware enabled (excludes health checks)")
     except Exception as e:
         print(f"⚠️ HTTPS middleware failed to load: {e}")
 
@@ -135,14 +160,15 @@ app.add_middleware(
 )
 
 # Add security headers middleware (with comprehensive error handling)
-@app.middleware("http")
+@app.middleware("http") 
 async def add_security_headers(request: Request, call_next):
     try:
-        # Process the request
+        # Process the request first
         response = await call_next(request)
         
         # Skip security headers for health checks to avoid any issues
         if request.url.path in ["/health", "/api/health"]:
+            print(f"🏥 Health check {request.url.path} - skipping security headers")
             return response
         
         # Add security headers for Railway deployment
