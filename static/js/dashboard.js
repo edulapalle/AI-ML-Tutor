@@ -29,7 +29,7 @@ class Dashboard {
             
             // Initialize UI components
             this.initEventListeners();
-
+            this.initChatHandlers(); // Add chat functionality
             this.initModals();
             
             // Load user data and populate UI
@@ -1969,6 +1969,178 @@ class Dashboard {
 
             insightsList.innerHTML = recHtml;
         }
+    }
+
+    // ===== CHAT FUNCTIONALITY =====
+
+    initChatHandlers() {
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        if (chatInput && sendBtn) {
+            // Send message on button click
+            sendBtn.addEventListener('click', () => this.sendChatMessage());
+
+            // Send message on Enter (without Shift)
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendChatMessage();
+                }
+            });
+
+            // Auto-resize textarea
+            chatInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+
+            console.log('✅ Chat handlers initialized');
+        } else {
+            console.warn('⚠️ Chat elements not found:', { chatInput: !!chatInput, sendBtn: !!sendBtn });
+        }
+    }
+
+    async sendChatMessage() {
+        const chatInput = document.getElementById('chatInput');
+        const message = chatInput.value.trim();
+
+        if (!message || this.isLoading) return;
+
+        try {
+            // Add user message to chat
+            this.addMessageToChat('user', message);
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+
+            // Show teddy bear typing indicator
+            this.showTeddyBearIndicator();
+
+            // Send message to API
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    message: message,
+                    conversation_history: this.conversationHistory
+                })
+            });
+
+            if (response.status === 401) {
+                this.redirectToLogin();
+                return;
+            }
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Add assistant response
+                this.addMessageToChat('assistant', data.response);
+                
+                // Update conversation history
+                this.conversationHistory.push(
+                    { role: 'user', content: message },
+                    { role: 'assistant', content: data.response }
+                );
+
+                // Update learning history if topics were covered
+                if (data.topics && data.topics.length > 0) {
+                    await this.updateLearningHistory();
+                }
+            } else {
+                this.addMessageToChat('assistant', `Error: ${data.detail || 'Failed to get response'}`);
+            }
+        } catch (error) {
+            console.error('Chat error:', error);
+            this.addMessageToChat('assistant', 'Sorry, I encountered an error. Please try again.');
+        } finally {
+            this.hideTeddyBearIndicator();
+        }
+    }
+
+    addMessageToChat(role, content) {
+        const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}`;
+
+        if (role === 'user') {
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-text">${this.escapeHtml(content)}</div>
+                </div>
+            `;
+        } else {
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-text">${this.formatResponse(content)}</div>
+                </div>
+            `;
+        }
+
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    showTeddyBearIndicator() {
+        this.isLoading = true;
+        const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
+
+        // Create typing indicator with child-friendly teddy bear
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message assistant typing-indicator';
+        typingDiv.id = 'teddyBearIndicator';
+
+        typingDiv.innerHTML = `
+            <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="message-content">
+                <div class="typing-animation">
+                    <div class="teddy-bear-spinner">🧸</div>
+                    <div class="thinking-text">Thinking...</div>
+                </div>
+            </div>
+        `;
+
+        chatMessages.appendChild(typingDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    hideTeddyBearIndicator() {
+        this.isLoading = false;
+        const indicator = document.getElementById('teddyBearIndicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    formatResponse(text) {
+        // Convert markdown-like formatting to HTML
+        let formatted = text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+        
+        return formatted;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 
