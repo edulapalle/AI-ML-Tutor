@@ -1170,6 +1170,11 @@ async def privacy_page(request: Request):
     """Privacy policy page"""
     return templates.TemplateResponse("privacy.html", {"request": request})
 
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    """Forgot password page"""
+    return templates.TemplateResponse("forgot-password.html", {"request": request})
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_redirect(request: Request):
     """Redirect /dashboard to / for backward compatibility"""
@@ -1181,25 +1186,43 @@ async def dashboard_redirect(request: Request):
 async def register_user(user_data: UserRegistration):
     """Register a new user"""
     try:
+        print(f"📝 Registration attempt for: {user_data.username} ({user_data.email})")
+        print(f"📝 Topics: {user_data.topics_of_interest}")
+        print(f"📝 Goals: {user_data.current_goals}")
+        
         result = await auth_service.register_user(user_data)
+        print(f"✅ Registration successful for user: {result['user_id']}")
         return {"message": "User registered successfully", "user_id": result["user_id"]}
-    except Exception as e:
+    except ValueError as e:
+        print(f"❌ Registration validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"❌ Registration system error: {e}")
+        print(f"   Error type: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @app.post("/api/auth/login")
 async def login_user(credentials: UserLogin):
     """Login user"""
     try:
+        print(f"🔐 Login attempt for: {credentials.email}")
+        
         # Get user data from auth service
         user_data = await auth_service.authenticate_user(credentials.email, credentials.password)
         if user_data:
             # Create access token
             access_token = auth_service.create_access_token(data={"sub": user_data["id"]})
-            return {"access_token": access_token, "token_type": "bearer"}
+            print(f"✅ Login successful for user: {user_data.get('username', 'unknown')}")
+            return {"access_token": access_token, "token_type": "bearer", "user": user_data}
         else:
+            print(f"❌ Login failed for: {credentials.email} (invalid credentials)")
             raise HTTPException(status_code=401, detail="Invalid credentials")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"❌ Login system error: {e}")
+        print(f"   Error type: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
 
 @app.get("/api/auth/profile")
 async def get_profile(current_user: UserProfile = Depends(get_current_user)):
