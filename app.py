@@ -38,10 +38,27 @@ from email_service import get_email_service
 # Import abuse protection system
 from protection_middleware import validate_chat_message
 
-# Load environment variables and configure SSL
+
+# New method to fix SSL certificate issues for Railway deployment
+import certifi
+
 load_dotenv()
-os.environ['SSL_CERT_FILE'] = '/etc/ssl/cert.pem'
-os.environ['REQUESTS_CA_BUNDLE'] = '/etc/ssl/cert.pem'
+
+# Remove any bad inherited values
+for v in ("SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
+    os.environ.pop(v, None)
+
+# Point both to a real CA bundle that exists in any Python container
+CA_BUNDLE = certifi.where()
+os.environ["SSL_CERT_FILE"] = CA_BUNDLE
+os.environ["REQUESTS_CA_BUNDLE"] = CA_BUNDLE
+
+
+# OLD METHOD do no use hardcoded values. 
+# # Load environment variables and configure SSL
+# load_dotenv()
+# os.environ['SSL_CERT_FILE'] = '/etc/ssl/cert.pem'
+# os.environ['REQUESTS_CA_BUNDLE'] = '/etc/ssl/cert.pem'
 
 # Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
