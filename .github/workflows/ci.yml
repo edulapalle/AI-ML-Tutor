@@ -2,9 +2,9 @@ name: RAG System CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ "**" ]  # Run on all branches
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, SantoshEdulapalle ]
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
@@ -34,15 +34,18 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-asyncio httpx
         
-    - name: Verify test file exists
+    - name: Verify test files exist
       run: |
-        if [ ! -f "test_rag.py" ]; then
-          echo "❌ test_rag.py file not found"
+        echo "🔍 Checking available test files..."
+        ls -la test_*.py || echo "No test files found"
+        
+        if [ ! -f "test_rag_backend.py" ]; then
+          echo "❌ test_rag_backend.py file not found"
           exit 1
         fi
-        echo "✅ test_rag.py file found"
+        echo "✅ test_rag_backend.py file found"
         
-    - name: Run RAG system tests
+    - name: Run comprehensive test suite
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         MILVUS_URI: ${{ secrets.MILVUS_URI }}
@@ -50,7 +53,26 @@ jobs:
         ENABLE_RERANKING: "true"
         RERANKING_MODEL: "o3"
       run: |
-        python test_rag.py
+        echo "🧪 Running RAG backend tests..."
+        if ! python test_rag_backend.py; then
+          echo "❌ RAG backend tests failed"
+          exit 1
+        fi
+        echo "✅ RAG backend tests passed"
+        
+        echo "🧪 Running integration tests..."
+        if ! python test_integration_comprehensive.py; then
+          echo "❌ Integration tests failed"
+          exit 1
+        fi
+        echo "✅ Integration tests passed"
+        
+        echo "🧪 Running data quality tests..."
+        if ! python test_data_quality.py; then
+          echo "❌ Data quality tests failed"
+          exit 1
+        fi
+        echo "✅ Data quality tests passed"
         
     - name: Test API endpoints
       env:
