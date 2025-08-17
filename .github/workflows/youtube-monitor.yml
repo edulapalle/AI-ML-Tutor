@@ -14,6 +14,8 @@ jobs:
       - name: Check for new StatQuest videos
         run: |
           echo "🔍 Checking for new StatQuest videos..."
+          echo "🔧 Debug: RAILWAY_APP_URL = ${{ secrets.RAILWAY_APP_URL }}"
+          echo "🔧 Debug: Full URL = ${{ secrets.RAILWAY_APP_URL }}/api/youtube/process"
           
           # Call your Railway endpoint to check for new videos
           response=$(curl -s -w "\n%{http_code}" \
@@ -32,7 +34,27 @@ jobs:
             echo "✅ YouTube monitoring completed successfully"
           else
             echo "❌ YouTube monitoring failed with code $http_code"
-            exit 1
+            echo "🔧 Trying alternative URL formats..."
+            
+            # Try with https:// prefix if not present
+            alt_response=$(curl -s -w "\n%{http_code}" \
+              -X POST \
+              -H "Content-Type: application/json" \
+              "https://web-production-ff950.up.railway.app/api/youtube/process")
+            
+            alt_http_code=$(echo "$alt_response" | tail -n1)
+            alt_body=$(echo "$alt_response" | head -n -1)
+            
+            echo "🔧 Alternative URL response: $alt_http_code"
+            echo "🔧 Alternative URL body: $alt_body"
+            
+            if [ "$alt_http_code" -eq 200 ]; then
+              echo "✅ Alternative URL worked! Please update RAILWAY_APP_URL secret"
+              exit 0
+            else
+              echo "❌ All URLs failed"
+              exit 1
+            fi
           fi
       
       - name: Check monitoring status
