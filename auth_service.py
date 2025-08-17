@@ -89,61 +89,120 @@ class AuthService:
             return payload
         except jwt.PyJWTError:
             return None
+    # OLD METHOD
+    # @staticmethod
+    # async def register_user(user_data: UserRegistration) -> Dict[str, Any]:
+    #     """Register a new user with comprehensive study information"""
+    #     try:
+    #         # Check if Supabase is configured
+    #         if supabase is None:
+    #             raise ValueError("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables.")
+            
+    #         # Check if user already exists
+    #         existing_user = supabase.table("users").select("email").eq("email", user_data.email).execute()
+    #         if existing_user.data:
+    #             raise ValueError("User with this email already exists")
+            
+    #         # Check if username is taken
+    #         existing_username = supabase.table("users").select("username").eq("username", user_data.username).execute()
+    #         if existing_username.data:
+    #             raise ValueError("Username already taken")
+            
+    #         # Hash password for secure storage
+    #         hashed_password = AuthService.get_password_hash(user_data.password)
+            
+    #         # Prepare user data for database insertion
+    #         user_dict = user_data.dict()
+    #         user_dict.pop("password")  # Remove plain password
+    #         user_dict["hashed_password"] = hashed_password
+    #         user_dict["created_at"] = datetime.utcnow().isoformat()
+    #         user_dict["topics_of_interest"] = json.dumps(user_data.topics_of_interest)
+    #         user_dict["current_goals"] = json.dumps(user_data.current_goals)
+    #         user_dict["date_of_birth"] = user_data.date_of_birth.isoformat()
+            
+    #         # Insert user into database
+    #         result = supabase.table("users").insert(user_dict).execute()
+            
+    #         if result.data:
+    #             user_id = result.data[0]["id"]
+    #             # Create access token for immediate login
+    #             access_token = AuthService.create_access_token(data={"sub": user_id})
+    #             return {
+    #                 "user_id": user_id,
+    #                 "access_token": access_token,
+    #                 "message": "User registered successfully"
+    #             }
+    #         else:
+    #             raise ValueError("Failed to create user")
+                
+    #     except FileNotFoundError as e:
+    #         traceback.print_exc()
+    #         print(f"⚠️ Auth service file error: {e}")
+    #         print("   This may be due to missing certificates or SSL configuration")
+    #         raise ValueError(f"Registration failed due to file access: {str(e)}")
+    #     except Exception as e:
+    #         print(f"⚠️ Auth service error: {e}")
+    #         print(f"   Error type: {type(e).__name__}")
+    #         raise ValueError(f"Registration failed: {str(e)}")
     
+    # NEW METHOD
     @staticmethod
     async def register_user(user_data: UserRegistration) -> Dict[str, Any]:
-        """Register a new user with comprehensive study information"""
         try:
-            # Check if Supabase is configured
+            step = "pre_checks"
             if supabase is None:
-                raise ValueError("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables.")
-            
-            # Check if user already exists
+                raise ValueError("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY.")
+
+            step = "check_existing_email"
             existing_user = supabase.table("users").select("email").eq("email", user_data.email).execute()
             if existing_user.data:
                 raise ValueError("User with this email already exists")
-            
-            # Check if username is taken
+
+            step = "check_existing_username"
             existing_username = supabase.table("users").select("username").eq("username", user_data.username).execute()
             if existing_username.data:
                 raise ValueError("Username already taken")
-            
-            # Hash password for secure storage
+
+            step = "hash_password"
             hashed_password = AuthService.get_password_hash(user_data.password)
-            
-            # Prepare user data for database insertion
-            user_dict = user_data.dict()
-            user_dict.pop("password")  # Remove plain password
+
+            step = "prepare_payload"
+            user_dict = user_data.model_dump() if hasattr(user_data, "model_dump") else user_data.dict()
+            user_dict.pop("password", None)
             user_dict["hashed_password"] = hashed_password
-            user_dict["created_at"] = datetime.utcnow().isoformat()
-            user_dict["topics_of_interest"] = json.dumps(user_data.topics_of_interest)
-            user_dict["current_goals"] = json.dumps(user_data.current_goals)
-            user_dict["date_of_birth"] = user_data.date_of_birth.isoformat()
-            
-            # Insert user into database
+            user_dict["created_at"] = datetime.now(timezone.utc).isoformat()
+
+            # If your Supabase columns are JSONB, DON'T dump to string:
+            # user_dict["topics_of_interest"] = user_data.topics_of_interest or []
+            # user_dict["current_goals"] = user_data.current_goals or []
+            # If your columns are TEXT, keep dumps:
+            user_dict["topics_of_interest"] = json.dumps(user_data.topics_of_interest or [])
+            user_dict["current_goals"] = json.dumps(user_data.current_goals or [])
+
+            user_dict["date_of_birth"] = (
+                user_data.date_of_birth.isoformat() if getattr(user_data, "date_of_birth", None) else None
+            )
+
+            step = "supabase_insert"
             result = supabase.table("users").insert(user_dict).execute()
-            
+
+            step = "post_insert_token"
             if result.data:
                 user_id = result.data[0]["id"]
-                # Create access token for immediate login
                 access_token = AuthService.create_access_token(data={"sub": user_id})
-                return {
-                    "user_id": user_id,
-                    "access_token": access_token,
-                    "message": "User registered successfully"
-                }
+                return {"user_id": user_id, "access_token": access_token, "message": "User registered successfully"}
             else:
-                raise ValueError("Failed to create user")
-                
+                raise ValueError("Failed to create user (no data returned)")
+
         except FileNotFoundError as e:
-            print(f"⚠️ Auth service file error: {e}")
-            print("   This may be due to missing certificates or SSL configuration")
-            raise ValueError(f"Registration failed due to file access: {str(e)}")
+            print(f"⚠️ FileNotFoundError at step: {step}: {e}")
+            traceback.print_exc()
+            raise ValueError(f"Registration failed due to file access at '{step}': {e}")
         except Exception as e:
-            print(f"⚠️ Auth service error: {e}")
-            print(f"   Error type: {type(e).__name__}")
-            raise ValueError(f"Registration failed: {str(e)}")
-    
+            print(f"⚠️ Exception at step: {step}: {e} ({type(e).__name__})")
+            traceback.print_exc()
+            raise ValueError(f"Registration failed at '{step}': {e}")
+
     @staticmethod
     async def authenticate_user(email: str, password: str) -> Optional[Dict[str, Any]]:
         """Authenticate user with email and password for secure login"""
