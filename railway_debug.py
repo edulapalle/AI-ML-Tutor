@@ -84,7 +84,7 @@ def test_imports():
         "openai": "OpenAI API client",
         "jinja2": "Template engine",
         "httpx": "HTTP client",
-        "python-dotenv": "Environment variables"
+        "dotenv": "Environment variables"
     }
     
     failed_imports = []

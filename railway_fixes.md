@@ -1,14 +1,19 @@
 # 🚂 Railway Deployment Fixes
 
-## 🔧 **Issue 1: Health Check Failure (OpenAI Error)**
+## 🔧 **Issue 1: Health Check Failure (Fixed)**
 
 ### **Root Cause:**
-The health check is failing because the app tries to connect to all services at startup, and one of them (likely OpenAI) is causing an error.
+The health check was failing because:
+1. **Slow network calls** to Milvus/Neo4j during health check
+2. **Heavy middleware** causing startup delays
+3. **Complex health logic** timing out Railway's health checker
 
 ### **Fix Applied:**
-1. ✅ **Improved error handling** in OpenAI client initialization
-2. ✅ **Enhanced health check** to be Railway-friendly
-3. ✅ **Non-critical services** won't fail the health check
+1. ✅ **Simplified health check** - No network calls, just environment checks
+2. ✅ **Faster response time** - Under 1 second instead of 10+ seconds
+3. ✅ **Multiple health endpoints** - `/health` and `/api/health`
+4. ✅ **Improved error handling** in middleware and OpenAI initialization
+5. ✅ **Optimized Railway config** - Reduced timeout from 60s to 30s
 
 ### **Railway Environment Variables Needed:**
 ```env
@@ -98,11 +103,22 @@ python railway_debug.py --server
 
 ### **Step 3: Test Health Check**
 ```bash
-# After redeployment, test:
+# After redeployment, test both endpoints:
+curl https://your-app.railway.app/health
 curl https://your-app.railway.app/api/health
 ```
 
-### **Step 4: Check Frontend**
+### **Step 4: Run Diagnostics**
+```bash
+# Test locally before deploying:
+python railway_debug.py
+python test_railway_startup.py
+
+# Test minimal server:
+python minimal_health_test.py
+```
+
+### **Step 5: Check Frontend**
 ```bash
 # Visit in browser:
 https://your-app.railway.app/

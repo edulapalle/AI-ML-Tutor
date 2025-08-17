@@ -2,8 +2,8 @@
 builder = "nixpacks"
 
 [deploy]
-healthcheckPath = "/api/health"
-healthcheckTimeout = 60
+healthcheckPath = "/health"
+healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 
 [[services]]
@@ -14,7 +14,7 @@ PORT = "8000"
 PYTHONPATH = "/app"
 
 [services.healthcheck]
-path = "/api/health"
+path = "/health"
 interval = 30
-timeout = 10
+timeout = 5
 retries = 3

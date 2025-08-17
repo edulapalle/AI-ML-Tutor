@@ -116,9 +116,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add security middleware for Railway deployment
-if os.getenv("RAILWAY_ENVIRONMENT_NAME"):  # Only in Railway production
-    app.add_middleware(HTTPSRedirectMiddleware)
+# Add security middleware for Railway deployment (conditionally)
+railway_env = os.getenv("RAILWAY_ENVIRONMENT_NAME") 
+if railway_env and railway_env.lower() == "production":  # Only in Railway production
+    try:
+        app.add_middleware(HTTPSRedirectMiddleware)
+        print("✅ HTTPS redirect middleware enabled for Railway production")
+    except Exception as e:
+        print(f"⚠️ HTTPS middleware failed to load: {e}")
 
 # Add CORS middleware
 app.add_middleware(
@@ -129,30 +134,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add security headers middleware
+# Add security headers middleware (with error handling)
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    
-    # Add security headers for Railway deployment
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    
-    # Content Security Policy - allow HTTPS resources
-    csp = (
-        "default-src 'self'; "
-        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-        "script-src 'self' 'unsafe-inline'; "
-        "font-src 'self' https://cdnjs.cloudflare.com; "
-        "img-src 'self' data: https:; "
-        "connect-src 'self' https:; "
-        "frame-ancestors 'none';"
-    )
-    response.headers["Content-Security-Policy"] = csp
-    
-    return response
+    try:
+        response = await call_next(request)
+        
+        # Add security headers for Railway deployment
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        
+        # Content Security Policy - allow HTTPS resources
+        csp = (
+            "default-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "script-src 'self' 'unsafe-inline'; "
+            "font-src 'self' https://cdnjs.cloudflare.com; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https:; "
+            "frame-ancestors 'none';"
+        )
+        response.headers["Content-Security-Policy"] = csp
+        
+        return response
+    except Exception as e:
+        print(f"⚠️ Security headers middleware error: {e}")
+        # Still proceed with the response even if headers fail
+        response = await call_next(request)
+        return response
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -1923,66 +1934,43 @@ async def get_content_suggestions(current_user: UserProfile = Depends(get_curren
         print(f"❌ Error getting content suggestions: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get content suggestions: {str(e)}")
 
+@app.get("/health")
 @app.get("/api/health")
 async def health_check():
-    """Railway-friendly health check endpoint"""
+    """Railway-friendly health check endpoint - fast and lightweight"""
+    
+    # Start with basic healthy status
     health_status = {
         "status": "healthy",
         "platform": "railway",
         "timestamp": datetime.now().isoformat(),
-        "services": {}
+        "app": "AI/ML Educational Platform",
+        "version": "2.1.0"
     }
     
-    # Check OpenAI (critical for basic functionality)
+    # Quick environment check (no network calls)
     try:
-        health_status["services"]["openai"] = {
-            "status": "available" if (oai is not None and OPENAI_API_KEY) else "missing_api_key",
-            "critical": True
+        env_check = {
+            "openai_key_present": bool(OPENAI_API_KEY),
+            "supabase_configured": bool(SUPABASE_URL and SUPABASE_ANON_KEY),
+            "milvus_configured": bool(MILVUS_URI),
+            "neo4j_configured": bool(NEO4J_URI),
+            "agentic_system_loaded": agentic_system is not None
         }
+        
+        health_status["environment"] = env_check
+        
+        # Simple status determination
+        if env_check["openai_key_present"]:
+            health_status["status"] = "healthy"
+            health_status["message"] = "All systems ready for AI learning!"
+        else:
+            health_status["status"] = "degraded"
+            health_status["message"] = "Basic functionality available, some features may be limited"
+            
     except Exception as e:
-        health_status["services"]["openai"] = {
-            "status": f"error: {str(e)}",
-            "critical": True
-        }
-    
-    # Check Milvus (optional - doesn't fail health check)
-    try:
-        milvus_status = connect_milvus()
-        health_status["services"]["milvus"] = {
-            "status": "connected" if milvus_status else "disconnected",
-            "critical": False
-        }
-    except Exception as e:
-        health_status["services"]["milvus"] = {
-            "status": f"error: {str(e)}",
-            "critical": False
-        }
-    
-    # Check Neo4j (optional - doesn't fail health check)
-    try:
-        neo4j_status = test_neo4j_connection()
-        health_status["services"]["neo4j"] = {
-            "status": "connected" if neo4j_status else "disconnected",
-            "critical": False
-        }
-    except Exception as e:
-        health_status["services"]["neo4j"] = {
-            "status": f"error: {str(e)}",
-            "critical": False
-        }
-    
-    # Check agentic system
-    health_status["services"]["agentic_system"] = {
-        "status": "initialized" if agentic_system is not None else "not_initialized",
-        "critical": False
-    }
-    
-    # Overall health is good if OpenAI is available
-    if health_status["services"]["openai"]["status"] == "available":
-        health_status["status"] = "healthy"
-    else:
-        health_status["status"] = "degraded"
-        health_status["message"] = "Basic AI chat available, but some features may be limited"
+        health_status["status"] = "error"
+        health_status["message"] = f"Health check error: {str(e)}"
     
     return health_status
 
