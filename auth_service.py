@@ -31,10 +31,16 @@ if not supabase_url or not supabase_key:
     supabase: Client = None
 else:
     try:
+        # Simple Supabase client for Railway deployment
         supabase: Client = create_client(supabase_url, supabase_key)
         print("✅ Supabase client initialized successfully")
+    except FileNotFoundError as e:
+        print(f"⚠️ Supabase file error: {e}")
+        print("   This may be due to missing certificates in Railway container")
+        supabase: Client = None
     except Exception as e:
         print(f"❌ Error initializing Supabase client: {e}")
+        print(f"   Error type: {type(e).__name__}")
         supabase: Client = None
 
 class AuthService:
@@ -116,7 +122,13 @@ class AuthService:
             else:
                 raise ValueError("Failed to create user")
                 
+        except FileNotFoundError as e:
+            print(f"⚠️ Auth service file error: {e}")
+            print("   This may be due to missing certificates or SSL configuration")
+            raise ValueError(f"Registration failed due to file access: {str(e)}")
         except Exception as e:
+            print(f"⚠️ Auth service error: {e}")
+            print(f"   Error type: {type(e).__name__}")
             raise ValueError(f"Registration failed: {str(e)}")
     
     @staticmethod
