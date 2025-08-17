@@ -169,6 +169,40 @@ class ChatApp {
         }
     }
 
+    showTypingIndicator() {
+        this.isLoading = true;
+        const chatMessages = document.getElementById('chatMessages');
+        
+        // Create typing indicator with child-friendly teddy bear
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message assistant typing-indicator';
+        typingDiv.id = 'typingIndicator';
+        
+        typingDiv.innerHTML = `
+            <div class="message-content">
+                <div class="message-header">
+                    <i class="fas fa-robot"></i>
+                    <span class="message-author">AI Assistant</span>
+                </div>
+                <div class="typing-animation">
+                    <div class="teddy-bear-spinner">🧸</div>
+                    <div class="thinking-text">Thinking...</div>
+                </div>
+            </div>
+        `;
+        
+        chatMessages.appendChild(typingDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    hideTypingIndicator() {
+        this.isLoading = false;
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+
     addMessageToChat(role, content) {
         const chatMessages = document.getElementById('chatMessages');
         const messageDiv = document.createElement('div');

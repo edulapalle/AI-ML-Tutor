@@ -1277,4 +1277,96 @@ body {
         font-size: 1rem;
         padding: 12px;
     }
+}
+
+/* ================================= CHILD-FRIENDLY TEDDY BEAR LOADING ================================= */
+
+/* Typing indicator with teddy bear animation */
+.typing-indicator {
+    opacity: 0.9;
+}
+
+.typing-animation {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.teddy-bear-spinner {
+    font-size: 2rem;
+    animation: teddyBounce 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.thinking-text {
+    color: #667eea;
+    font-size: 1rem;
+    font-weight: 500;
+    animation: fadeInOut 2s ease-in-out infinite;
+}
+
+/* Teddy bear bounce animation - gentle and child-friendly */
+@keyframes teddyBounce {
+    0%, 100% {
+        transform: translateY(0px) scale(1);
+    }
+    50% {
+        transform: translateY(-8px) scale(1.1);
+    }
+}
+
+/* Thinking text fade animation */
+@keyframes fadeInOut {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Cute pulse effect for the typing indicator */
+.typing-indicator .message-content {
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
+    border: 2px solid #667eea;
+    border-radius: 20px;
+    animation: gentlePulse 3s ease-in-out infinite;
+}
+
+@keyframes gentlePulse {
+    0%, 100% {
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+    }
+    50% {
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4);
+    }
+}
+
+/* Alternative child-friendly loading emojis (backup options) */
+.teddy-bear-spinner::before {
+    content: "🧸"; /* Primary: Teddy bear */
+}
+
+/* Fallback animations for different emoji options */
+@supports not (content: "🧸") {
+    .teddy-bear-spinner::before {
+        content: "🐻"; /* Fallback 1: Bear face */
+    }
+}
+
+/* Mobile responsive adjustments for loading animation */
+@media (max-width: 768px) {
+    .teddy-bear-spinner {
+        font-size: 1.5rem;
+    }
+    
+    .thinking-text {
+        font-size: 0.9rem;
+    }
+    
+    .typing-animation {
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
 } 
