@@ -2141,7 +2141,7 @@ async def test_css():
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
         <style>
             .test-box {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: #E3F2FD;
                 padding: 20px;
                 margin: 20px;
                 border-radius: 10px;

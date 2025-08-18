@@ -760,7 +760,7 @@ class Dashboard {
             </p>
             <div style="display: flex; gap: 1rem; justify-content: center;">
                 <button id="viewContentBtn" style="
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    background: #FFD93B;
                     color: white;
                     border: none;
                     padding: 0.75rem 1.5rem;
@@ -992,7 +992,7 @@ class Dashboard {
                 contentDiv.style.transition = 'all 0.2s ease';
                 contentDiv.title = 'Click to ask about this concept';
                 contentDiv.innerHTML = `
-                    <div class="star-title" style="font-weight: 600; font-size: 0.85rem; color: #667eea;">${star.doc_id.substring(0, 30)}...</div>
+                    <div class="star-title" style="font-weight: 600; font-size: 0.85rem; color: #FFB6A5;">${star.doc_id.substring(0, 30)}...</div>
                     ${star.note ? `<div class="star-note" style="color: #666; font-size: 0.8rem;">${star.note.substring(0, 50)}...</div>` : ''}
                     <div style="font-size: 0.7rem; color: #999; margin-top: 0.2rem;">💬 Click to ask about this</div>
                 `;
@@ -1033,7 +1033,7 @@ class Dashboard {
                 const moreItem = document.createElement('div');
                 moreItem.className = 'star-item';
                 moreItem.style.textAlign = 'center';
-                moreItem.style.color = '#667eea';
+                moreItem.style.color = '#FFB6A5';
                 moreItem.style.cursor = 'pointer';
                 moreItem.textContent = `+${stars.length - 3} more...`;
                 moreItem.addEventListener('click', () => this.showStarsModal());
@@ -1086,10 +1086,10 @@ class Dashboard {
                 contentDiv.style.transition = 'all 0.2s ease';
                 contentDiv.title = 'Click to ask about this concept';
                 contentDiv.innerHTML = `
-                    <div class="star-card-title" style="font-weight: 600; margin-bottom: 0.5rem; padding-right: 2rem; color: #667eea;">${star.doc_id}</div>
+                    <div class="star-card-title" style="font-weight: 600; margin-bottom: 0.5rem; padding-right: 2rem; color: #FFB6A5;">${star.doc_id}</div>
                     ${star.note ? `<div class="star-card-note" style="color: #666; margin-bottom: 0.5rem;">${star.note}</div>` : ''}
                     ${star.created_at ? `<div class="star-card-date" style="color: #999; font-size: 0.8rem;">${new Date(star.created_at).toLocaleDateString()}</div>` : ''}
-                    <div style="font-size: 0.8rem; color: #667eea; margin-top: 0.5rem; font-weight: 500;">💬 Click to ask about this concept</div>
+                    <div style="font-size: 0.8rem; color: #FFB6A5; margin-top: 0.5rem; font-weight: 500;">💬 Click to ask about this concept</div>
                 `;
                 
                 // Add hover effect
@@ -1479,7 +1479,7 @@ class Dashboard {
         if (!indicator) return;
 
         if (isOnline) {
-            indicator.style.color = '#48bb78';
+            indicator.style.color = '#FFD93B';
             indicator.innerHTML = '<i class="fas fa-circle"></i> Connected';
         } else {
             indicator.style.color = '#f56565';
@@ -1572,7 +1572,7 @@ class Dashboard {
             position: fixed;
             top: 80px;
             right: 20px;
-            background: ${type === 'success' ? '#4caf50' : '#f44336'};
+            background: ${type === 'success' ? '#FFD93B' : '#f44336'};
             color: white;
             padding: 1rem 1.5rem;
             border-radius: 10px;
@@ -1663,7 +1663,7 @@ class Dashboard {
             .agentic-insights {
                 margin-bottom: 2rem;
                 padding: 1rem;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: #FFD93B;
                 border-radius: 12px;
                 color: white;
             }

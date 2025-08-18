@@ -1,0 +1,73 @@
+flowchart LR
+    %% Data Sources
+    A[Structured Concepts<br/>concepts.json<br/>84 ML/AI Topics] --> B[AI Content Generation<br/>generate_dataset.py]
+    
+    %% Content Generation Pipeline
+    B --> C[OpenAI GPT-4o-mini<br/>Child-friendly Content]
+    C --> D[Multi-format Generation<br/>Definitions, Analogies, Examples, Quizzes]
+    D --> E[Quality Filtering<br/>Content Length, Badword Check]
+    E --> F[Structured Output<br/>ml_analogies.jsonl<br/>1,393 Educational Chunks]
+    
+    %% YouTube Data Pipeline
+    G[YouTube Channels<br/>StatQuest, 3Blue1Brown, Two Minute Papers] --> H[Video Scraping<br/>youtube_single_scraper.py]
+    H --> I[Transcript Extraction<br/>youtube-transcript-api]
+    I --> J[Content Processing<br/>Keyword Extraction, Chunking]
+    J --> K[Metadata Enhancement<br/>Title, URL, Timestamp]
+    K --> L[Structured Export<br/>statquest_videos_export.json<br/>104 Videos, 312 Chunks]
+    
+    %% Vector Database Pipeline
+    F --> M[Vector Embedding<br/>OpenAI text-embedding-3-small]
+    L --> M
+    M --> N[Milvus Loading<br/>load_rich_concepts_to_milvus_new.py]
+    N --> O[Vector Storage<br/>Milvus Collections<br/>rich_ml_education<br/>youtube_creator_videos]
+    
+    %% Knowledge Graph Pipeline
+    L --> P[Graph Construction<br/>build_kg.py]
+    P --> Q[Relationship Mapping<br/>Concept Prerequisites<br/>Topic Connections]
+    Q --> R[Neo4j Storage<br/>Nodes: Concepts, Videos<br/>Relationships: Prerequisites, Related]
+    
+    %% Data Quality Pipeline
+    F --> S[Quality Checks<br/>test_data_quality.py]
+    L --> S
+    S --> T[Content Length Filter<br/>50-5000 characters]
+    S --> U[Duplicate Detection<br/>MD5 Hash Comparison]
+    S --> V[Empty Content Filter<br/>Minimum 20 characters]
+    S --> W[Metadata Completeness<br/>Title, Source URL Required]
+    
+    %% Integration Layer
+    O --> X[Retrieval System<br/>Semantic Search]
+    R --> Y[Graph Queries<br/>Relationship Traversal]
+    X --> Z[Unified RAG Pipeline<br/>Multi-source Results]
+    Y --> Z
+    
+    %% Real-time Updates (30-minute Cron)
+    AA[GitHub Actions Cron<br/>Every 30 Minutes<br/>'0,30 * * * *'] --> BB[YouTube Monitor API<br/>/api/youtube/process]
+    BB --> CC[New Video Detection<br/>StatQuest, 3Blue1Brown, etc.]
+    CC --> H
+    BB --> DD[Status Check<br/>/api/youtube/status]
+    
+    %% Monitoring & Validation
+    T --> CC[Quality Metrics<br/>Content Distribution]
+    U --> CC
+    V --> CC
+    W --> CC
+    CC --> DD[Data Health Dashboard<br/>Collection Status]
+    
+    %% Styling
+    classDef source fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef generation fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef processing fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef storage fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef quality fill:#fce4ec,stroke:#ad1457,stroke-width:2px
+    classDef integration fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef automation fill:#fff8e1,stroke:#f57f17,stroke-width:2px
+    classDef monitoring fill:#f1f8e9,stroke:#689f38,stroke-width:2px
+    
+    class A,G source
+    class B,C,D,E generation
+    class H,I,J,K,L,M,N,P,Q processing
+    class F,O,R storage
+    class S,T,U,V,W quality
+    class X,Y,Z integration
+    class AA,BB automation
+    class CC,DD monitoring

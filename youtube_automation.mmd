@@ -1,0 +1,74 @@
+flowchart TD
+    %% Cron Schedule
+    A[GitHub Actions Cron Schedule<br/>Every 30 Minutes<br/>'0,30 * * * *'] --> B[Trigger YouTube Monitor Workflow]
+    
+    %% Workflow Steps
+    B --> C[Check for New StatQuest Videos]
+    C --> D[API Call to Railway App<br/>POST /api/youtube/process]
+    
+    %% API Processing
+    D --> E{Response Code?}
+    E -->|200 OK| F[✅ Processing Successful]
+    E -->|Error| G[❌ Primary URL Failed]
+    
+    %% Fallback Mechanism
+    G --> H[Try Alternative URL<br/>Hard-coded Railway Domain]
+    H --> I{Fallback Success?}
+    I -->|200 OK| J[✅ Alternative URL Works<br/>Update Secret Needed]
+    I -->|Failed| K[❌ All URLs Failed<br/>Alert Required]
+    
+    %% Success Path
+    F --> L[Get Monitoring Status<br/>GET /api/youtube/status]
+    J --> L
+    L --> M[Log Status Results]
+    
+    %% Backend Processing (Railway App)
+    N[Railway App Endpoints] --> O[/api/youtube/process<br/>Video Detection Logic]
+    N --> P[/api/youtube/status<br/>Monitoring Health Check]
+    
+    %% Video Processing Pipeline
+    O --> Q[Scan YouTube Channels<br/>StatQuest, 3Blue1Brown, Two Minute Papers]
+    Q --> R[Compare with Processed Videos<br/>Supabase: youtube_processed_videos]
+    R --> S{New Videos Found?}
+    S -->|Yes| T[Download Video Metadata<br/>Title, URL, Transcript]
+    S -->|No| U[No Action Needed<br/>All Videos Current]
+    
+    %% Data Storage
+    T --> V[Extract Educational Keywords<br/>ML/AI Content Filter]
+    V --> W[Create Knowledge Graph Entries<br/>Neo4j: Video Nodes + Relationships]
+    W --> X[Generate Vector Embeddings<br/>OpenAI text-embedding-3-small]
+    X --> Y[Store in Milvus<br/>youtube_creator_videos Collection]
+    Y --> Z[Update Processed Videos Log<br/>Supabase: Mark as Processed]
+    
+    %% Monitoring & Logging
+    M --> AA[GitHub Actions Log<br/>Workflow Execution Results]
+    U --> AA
+    Z --> AA
+    K --> BB[Alert System<br/>Workflow Failure Notification]
+    
+    %% Schedule Visualization
+    CC[Continuous Operation<br/>24/7 Automated Monitoring] --> A
+    CC --> DD[Manual Trigger Available<br/>workflow_dispatch Event]
+    DD --> B
+    
+    %% Performance Metrics
+    AA --> EE[Monitoring Statistics<br/>• Success Rate<br/>• New Videos per Day<br/>• Processing Time<br/>• Error Frequency]
+    
+    %% Styling
+    classDef schedule fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    classDef workflow fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef api fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef processing fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef storage fill:#fce4ec,stroke:#ad1457,stroke-width:2px
+    classDef success fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef error fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+    classDef monitoring fill:#f1f8e9,stroke:#689f38,stroke-width:2px
+    
+    class A,CC,DD schedule
+    class B,C,L,M workflow
+    class D,E,H,I,N,O,P api
+    class Q,R,S,T,V,W,X,Y processing
+    class Z,Y,W storage
+    class F,J,U success
+    class G,K,BB error
+    class AA,EE monitoring

@@ -1,0 +1,95 @@
+graph TD
+    %% Input Layer
+    A[User Request] --> B[Multi-Layer Security System]
+    
+    %% Authentication Layer
+    B --> C[Authentication Layer]
+    C --> C1[JWT Token Validation]
+    C --> C2[User Session Check]
+    C --> C3[Age Verification]
+    
+    %% Rate Limiting Layer
+    C --> D[Rate Limiting Layer]
+    D --> D1[IP-based Limiting<br/>10 requests/60s]
+    D --> D2[User-based Limiting<br/>Sliding Window]
+    D --> D3[Endpoint-specific Limits]
+    
+    %% Content Filtering Layer
+    D --> E[Content Filtering Layer]
+    E --> E1[Input Sanitization<br/>XSS Prevention]
+    E --> E2[Length Validation<br/>Max 1000 chars]
+    E --> E3[Profanity Detection<br/>Custom Word Lists]
+    
+    %% AI Guardrails Layer
+    E --> F[AI Guardrails Layer]
+    F --> F1[LLM Classification<br/>Educational vs Non-Educational]
+    F --> F2[Context Analysis<br/>Conversation Flow]
+    F --> F3[Intent Validation<br/>Learning-focused]
+    
+    %% OpenAI Moderation Layer
+    F --> G[OpenAI Moderation]
+    G --> G1[Content Moderation API<br/>Violence/Hate Detection]
+    G --> G2[Self-harm Prevention<br/>Mental Health Safety]
+    G --> G3[Sexual Content Blocking<br/>Child Protection]
+    
+    %% Decision Points
+    C1 --> H{Valid Token?}
+    D1 --> I{Rate Limit OK?}
+    E1 --> J{Content Safe?}
+    F1 --> K{Educational?}
+    G1 --> L{Moderation Pass?}
+    
+    %% Allow Path
+    H -->|Yes| I
+    I -->|Yes| J
+    J -->|Yes| K
+    K -->|Yes| L
+    L -->|Yes| M[Process Request<br/>RAG System]
+    
+    %% Block Paths
+    H -->|No| N[401 Unauthorized<br/>Please log in]
+    I -->|No| O[429 Rate Limited<br/>Take a break!]
+    J -->|No| P[400 Bad Request<br/>Let's keep it friendly]
+    K -->|No| Q[422 Off-topic<br/>Let's focus on learning!]
+    L -->|No| R[403 Blocked<br/>Content not appropriate]
+    
+    %% Response Processing
+    M --> S[Generate Response]
+    S --> T[Post-processing Security]
+    T --> T1[Response Sanitization]
+    T --> T2[Link Validation<br/>No External Links]
+    T --> T3[Age-appropriate Check]
+    
+    %% Final Output
+    T --> U[Safe Educational Response]
+    
+    %% Monitoring & Logging
+    N --> V[Security Event Logging]
+    O --> V
+    P --> V
+    Q --> V
+    R --> V
+    V --> W[Alert System<br/>Abuse Pattern Detection]
+    
+    %% Styling
+    classDef input fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef auth fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef rate fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef content fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef ai fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef moderation fill:#fce4ec,stroke:#ad1457,stroke-width:2px
+    classDef decision fill:#fff8e1,stroke:#f57f17,stroke-width:2px
+    classDef allow fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef block fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+    classDef monitoring fill:#f1f8e9,stroke:#689f38,stroke-width:2px
+    
+    class A input
+    class C,C1,C2,C3 auth
+    class D,D1,D2,D3 rate
+    class E,E1,E2,E3 content
+    class F,F1,F2,F3 ai
+    class G,G1,G2,G3 moderation
+    class H,I,J,K,L decision
+    class M,S,T,T1,T2,T3,U allow
+    class N,O,P,Q,R block
+    class V,W monitoring

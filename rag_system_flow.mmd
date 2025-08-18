@@ -1,0 +1,78 @@
+flowchart TD
+    %% User Input
+    A[User Query<br/>What is machine learning?] --> B[Authentication Check<br/>JWT Validation]
+    
+    %% Security Layer
+    B --> C[Security Guardrails<br/>Content Filtering]
+    C --> D[Rate Limiting Check<br/>10 requests/60 seconds]
+    
+    %% RAG Pipeline Start
+    D --> E[Intent Classification<br/>GPT-4o-mini Analysis]
+    
+    %% Intent Routing
+    E --> F{Intent Type?}
+    F -->|explain/define| G[Definition Pipeline]
+    F -->|compare/analyze| H[Comparison Pipeline]
+    F -->|quiz/test| I[Quiz Pipeline]
+    F -->|general| J[General Learning Pipeline]
+    
+    %% Multi-Source Retrieval
+    G --> K[Multi-Source Retrieval]
+    H --> K
+    I --> K
+    J --> K
+    
+    %% Retrieval Sources
+    K --> L[Milvus Vector Search<br/>Educational Concepts]
+    K --> M[Neo4j Graph Query<br/>Related Topics]
+    K --> N[User History Analysis<br/>Personalization]
+    
+    %% Results Processing
+    L --> O[Candidate Results<br/>Top-K Retrieval]
+    M --> O
+    N --> O
+    
+    %% Re-ranking
+    O --> P[LLM Re-ranking<br/>GPT-4o-mini Judge]
+    P --> Q[Top-5 Results<br/>Relevance Scored]
+    
+    %% Response Composition
+    Q --> R[Child-Friendly Response<br/>Generation]
+    R --> S[Add Analogies &<br/>Visual Concepts]
+    S --> T[Include Citations &<br/>Next Steps]
+    
+    %% Agentic Enhancement
+    T --> U[Agentic Analysis<br/>Background Processing]
+    U --> V[Learning Path<br/>Recommendations]
+    U --> W[Comprehension<br/>Signals]
+    U --> X[Progress<br/>Tracking]
+    
+    %% Final Response
+    V --> Y[Enhanced Response<br/>with Personalization]
+    W --> Y
+    X --> Y
+    T --> Y
+    
+    %% Output
+    Y --> Z[JSON Response<br/>answer, citations, next_concepts]
+    
+    %% Error Handling
+    C -->|Blocked Content| AA[Safety Response<br/>Let's focus on learning!]
+    D -->|Rate Limited| BB[Gentle Limit Message<br/>Take a break!]
+    
+    %% Styling
+    classDef input fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef security fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef processing fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef retrieval fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef enhancement fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef output fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef error fill:#fce4ec,stroke:#ad1457,stroke-width:2px
+    
+    class A,B input
+    class C,D security
+    class E,F,G,H,I,J,P,Q,R,S,T processing
+    class K,L,M,N,O retrieval
+    class U,V,W,X enhancement
+    class Y,Z output
+    class AA,BB error

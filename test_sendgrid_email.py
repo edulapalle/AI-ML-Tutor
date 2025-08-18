@@ -55,7 +55,7 @@ async def test_sendgrid_email():
         <title>SendGrid Test Email</title>
         <style>
             body { font-family: Arial, sans-serif; margin: 40px; }
-            .header { background: #667eea; color: white; padding: 20px; border-radius: 8px; }
+            .header { background: #FFD93B; color: white; padding: 20px; border-radius: 8px; }
             .content { padding: 20px; background: #f8f9fa; border-radius: 8px; margin-top: 20px; }
             .emoji { font-size: 24px; }
         </style>

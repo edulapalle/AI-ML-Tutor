@@ -1,0 +1,67 @@
+graph TD
+    %% Central Orchestrator
+    A[Agentic Learning System<br/>Orchestrator] --> B[Learning Path Agent]
+    A --> C[Comprehension Monitor]
+    A --> D[Goal Achievement Assistant]
+    A --> E[Content Curation Agent]
+    
+    %% Learning Path Agent Details
+    B --> B1[Analyzes learning<br/>history patterns]
+    B --> B2[Uses Neo4j graph<br/>for prerequisites]
+    B --> B3[Recommends next<br/>optimal topics]
+    B --> B4[Adapts difficulty<br/>autonomously]
+    
+    %% Comprehension Monitor Details
+    C --> C1[Tracks understanding<br/>signals from chat]
+    C --> C2[Detects confusion/<br/>mastery patterns]
+    C --> C3[Adjusts difficulty<br/>autonomously]
+    C --> C4[Monitors learning<br/>velocity]
+    
+    %% Goal Achievement Assistant Details
+    D --> D1[Tracks goal progress]
+    D --> D2[Analyzes learning<br/>activities]
+    D --> D3[Generates autonomous<br/>interventions]
+    D --> D4[Estimates progress<br/>completion]
+    
+    %% Content Curation Agent Details
+    E --> E1[Identifies content<br/>gaps in learning]
+    E --> E2[Suggests materials<br/>from knowledge base]
+    E --> E3[Adapts to learning<br/>styles]
+    E --> E4[Discovers relevant<br/>resources]
+    
+    %% Data Sources Integration
+    F[Neo4j Knowledge Graph] --> B2
+    F --> E4
+    G[Supabase User Data] --> C1
+    G --> D1
+    H[Milvus Vector DB] --> E2
+    I[OpenAI API] --> A
+    
+    %% Agent Coordination Flow
+    B --> J[Coordination Hub<br/>Analytics & Insights]
+    C --> J
+    D --> J
+    E --> J
+    J --> A
+    
+    %% Output Flow
+    A --> K[Personalized Learning<br/>Experience]
+    K --> K1[Adaptive content]
+    K --> K2[Pacing adjustments]
+    K --> K3[Material recommendations]
+    K --> K4[Progress insights]
+    
+    %% Styling
+    classDef orchestrator fill:#e3f2fd,stroke:#0d47a1,stroke-width:3px
+    classDef agents fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    classDef features fill:#fff8e1,stroke:#ff6f00,stroke-width:2px
+    classDef data fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef coordination fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef output fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    
+    class A orchestrator
+    class B,C,D,E agents
+    class B1,B2,B3,B4,C1,C2,C3,C4,D1,D2,D3,D4,E1,E2,E3,E4 features
+    class F,G,H,I data
+    class J coordination
+    class K,K1,K2,K3,K4 output

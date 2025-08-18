@@ -1,0 +1,54 @@
+graph TD
+    %% Child-Friendly Frontend
+    A[Child-Friendly Frontend<br/>HTML/CSS/JS with Teddy Bear Animations] --> B[FastAPI Application<br/>Authentication + Security]
+    
+    %% FastAPI Core Components
+    B --> C[RAG System]
+    B --> D[Agentic Learning System]
+    
+    %% RAG System Components
+    C --> E[Intent Classification<br/>explain/define/compare]
+    C --> F[Multi-Source Retrieval<br/>Milvus + Neo4j Queries]
+    C --> G[LLM Re-ranking<br/>GPT-4o-mini Judge]
+    
+    %% Agentic Learning System Components
+    D --> H[Learning Path Agent<br/>Next topic suggestions]
+    D --> I[Comprehension Monitor<br/>Understanding tracking]
+    D --> J[Goal Achievement Assistant<br/>Progress tracking]
+    D --> K[Content Curation Agent<br/>Gap identification]
+    
+    %% External Data Sources
+    L[External Data Sources] --> M[📊 Milvus Vector DB<br/>1,393 ML concepts]
+    L --> N[🎥 Neo4j Knowledge Graph<br/>91+ videos]
+    L --> O[👤 Supabase User DB<br/>Auth + Progress]
+    L --> P[🤖 OpenAI API<br/>GPT + Embeddings]
+    
+    %% Automation Layer
+    Q[GitHub Actions<br/>30-min Cron Automation] --> R[YouTube Monitor<br/>API: /api/youtube/process]
+    R --> N
+    R --> M
+    
+    %% Connections to External Sources
+    F --> M
+    F --> N
+    B --> O
+    C --> P
+    D --> P
+    H --> N
+    I --> O
+    J --> O
+    K --> M
+    K --> N
+    
+    %% Styling
+    classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef backend fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef rag fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef agents fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef external fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    
+    class A frontend
+    class B backend
+    class C,E,F,G rag
+    class D,H,I,J,K agents
+    class L,M,N,O,P external

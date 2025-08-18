@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #E3F2FD;
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -27,7 +27,7 @@ body {
     border-radius: 20px;
     padding: 2rem;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid #FFB6A5;
 }
 
 .register-card {
@@ -47,7 +47,7 @@ body {
 }
 
 .auth-header h1 i {
-    color: #667eea;
+    color: #FFB6A5;
     margin-right: 0.5rem;
 }
 
@@ -79,7 +79,7 @@ body {
 }
 
 .form-section h3 i {
-    color: #667eea;
+    color: #FFB6A5;
 }
 
 .form-group {
@@ -98,7 +98,7 @@ body {
 }
 
 .form-group label i {
-    color: #667eea;
+    color: #FFB6A5;
 }
 
 .form-group input,
@@ -116,7 +116,7 @@ body {
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #FFB6A5;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -143,7 +143,7 @@ body {
 }
 
 .password-toggle:hover {
-    color: #667eea;
+    color: #FFB6A5;
 }
 
 .checkbox-grid {
@@ -176,8 +176,8 @@ body {
 }
 
 .checkbox-label input[type="checkbox"]:checked + .checkmark {
-    background: #667eea;
-    border-color: #667eea;
+    background: #FFD93B;
+    border-color: #FFB6A5;
 }
 
 .checkbox-label input[type="checkbox"]:checked + .checkmark::after {
@@ -200,7 +200,7 @@ body {
 }
 
 .forgot-link {
-    color: #667eea;
+    color: #FFB6A5;
     text-decoration: none;
     font-size: 0.9rem;
     transition: color 0.3s ease;
@@ -212,9 +212,9 @@ body {
 }
 
 .auth-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
+    background: #FFD93B;
+    color: #333;
+    border: 2px solid #FFB6A5;
     padding: 1rem 2rem;
     border-radius: 8px;
     font-size: 1rem;
@@ -272,7 +272,7 @@ body {
 }
 
 .auth-link {
-    color: #667eea;
+    color: #FFB6A5;
     text-decoration: none;
     font-weight: 600;
     transition: color 0.3s ease;

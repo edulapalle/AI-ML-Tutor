@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #E3F2FD;
     min-height: 100vh;
     color: #333;
 }
@@ -43,7 +43,7 @@ body {
 }
 
 .header-left h1 i {
-    color: #667eea;
+    color: #FFD93B;
     margin-right: 0.5rem;
 }
 
@@ -73,7 +73,7 @@ body {
 }
 
 .user-menu-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #FFD93B;
     color: white;
     border: none;
     padding: 0.75rem 1.5rem;
@@ -124,7 +124,7 @@ body {
 
 .dropdown-item:hover {
     background-color: #f7fafc;
-    color: #667eea;
+    color: #FFB6A5;
 }
 
 .dropdown-divider {
@@ -150,7 +150,7 @@ body {
 }
 
 .chat-info h3 i {
-    color: #667eea;
+    color: #FFB6A5;
     margin-right: 0.5rem;
 }
 
@@ -174,7 +174,7 @@ body {
 }
 
 .quick-action {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #FFD93B;
     color: white;
     border: none;
     padding: 0.5rem 1rem;
@@ -231,7 +231,7 @@ body {
 }
 
 .interest-tag {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #FFD93B;
     color: white;
     padding: 0.25rem 0.75rem;
     border-radius: 15px;
@@ -257,7 +257,7 @@ body {
 }
 
 .goal-item i {
-    color: #667eea;
+    color: #FFB6A5;
 }
 
 /* Learning History */
@@ -291,7 +291,7 @@ body {
 }
 
 .history-icon {
-    color: #48bb78;
+    color: #FFD93B;
     font-size: 1rem;
     min-width: 20px;
 }
@@ -372,7 +372,7 @@ body {
 }
 
 .starter-item i {
-    color: #667eea;
+    color: #FFB6A5;
     font-size: 0.8rem;
 }
 
@@ -433,7 +433,7 @@ body {
 }
 
 .message.user .message-content {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #FFD93B;
     color: white;
     border-bottom-right-radius: 5px;
 }
@@ -484,11 +484,11 @@ body {
 }
 
 #messageInput:focus {
-    border-color: #667eea;
+    border-color: #FFB6A5;
 }
 
 .send-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #FFD93B;
     color: white;
     border: none;
     border-radius: 50%;
@@ -557,7 +557,7 @@ body {
 }
 
 .sidebar-section h3 i {
-    color: #667eea;
+    color: #FFB6A5;
 }
 
 /* Settings */
@@ -582,7 +582,7 @@ body {
 }
 
 .small-button {
-    background: #667eea;
+    background: #FFD93B;
     color: white;
     border: none;
     padding: 0.5rem 1rem;
@@ -623,7 +623,7 @@ body {
 }
 
 .source-item .score {
-    color: #667eea;
+    color: #FFB6A5;
     font-weight: 600;
     font-size: 0.8rem;
 }
@@ -771,7 +771,7 @@ body {
 }
 
 .button.primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #FFD93B;
     color: white;
 }
 
@@ -1145,7 +1145,7 @@ body {
 
 .quiz-option.selected.correct {
     background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
-    border-color: #4caf50;
+    border-color: #FFD93B;
     color: #2e7d32;
 }
 
@@ -1173,7 +1173,7 @@ body {
 
 .quiz-feedback {
     background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
-    border: 3px solid #4caf50;
+    border: 3px solid #FFD93B;
     border-radius: 15px;
     padding: 20px;
     margin: 15px 0;
@@ -1189,7 +1189,7 @@ body {
 
 .quiz-feedback.correct {
     background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
-    border-color: #4caf50;
+    border-color: #FFD93B;
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
 }
 
@@ -1300,7 +1300,7 @@ body {
 }
 
 .thinking-text {
-    color: #667eea;
+    color: #FFB6A5;
     font-size: 1rem;
     font-weight: 500;
     animation: fadeInOut 2s ease-in-out infinite;
@@ -1329,7 +1329,7 @@ body {
 /* Cute pulse effect for the typing indicator */
 .typing-indicator .message-content {
     background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
-    border: 2px solid #667eea;
+    border: 2px solid #FFB6A5;
     border-radius: 20px;
     animation: gentlePulse 3s ease-in-out infinite;
 }
