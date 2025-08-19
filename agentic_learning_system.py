@@ -28,7 +28,7 @@ class LearningInsight:
     confidence: float  # 0.0 to 1.0
     evidence: List[str]
     action_suggestion: str
-    created_at: datetime
+    created_at: str  # ISO format string instead of datetime
 
 @dataclass
 class LearningPathRecommendation:
@@ -40,7 +40,7 @@ class LearningPathRecommendation:
     prerequisites_needed: List[str]
     estimated_difficulty: float  # 0.0 to 1.0
     confidence: float
-    created_at: datetime
+    created_at: str  # ISO format string instead of datetime
 
 @dataclass
 class ComprehensionSignal:
@@ -50,21 +50,15 @@ class ComprehensionSignal:
     signal_type: str  # 'confusion', 'mastery', 'interest', 'struggle'
     strength: float  # -1.0 to 1.0 (negative = bad, positive = good)
     evidence: str
-    timestamp: datetime
+    timestamp: str  # ISO format string instead of datetime
 
 class AgenticLearningSystem:
     """Main agentic learning system orchestrator"""
     
     def _serialize_dataclass(self, obj):
-        """Convert dataclass to dict with proper datetime handling"""
+        """Convert dataclass to dict - now all fields are JSON-safe"""
         if hasattr(obj, '__dataclass_fields__'):
-            result = {}
-            for field, value in asdict(obj).items():
-                if isinstance(value, datetime):
-                    result[field] = value.isoformat()
-                else:
-                    result[field] = value
-            return result
+            return asdict(obj)
         return obj
     
     def _serialize_response(self, obj):
@@ -526,7 +520,7 @@ class LearningPathAgent:
                     prerequisites_needed=rec_data.get("prerequisites_needed", []),
                     estimated_difficulty=rec_data.get("estimated_difficulty", 0.5),
                     confidence=rec_data.get("confidence", 0.7),
-                    created_at=datetime.now()
+                    created_at=datetime.now().isoformat()  # Convert to string immediately
                 )
                 recommendations.append(recommendation)
             
@@ -769,7 +763,7 @@ class ComprehensionMonitor:
                     confidence=insight_data.get("confidence", 0.5),
                     evidence=insight_data.get("evidence", []),
                     action_suggestion=insight_data.get("action_suggestion", ""),
-                    created_at=datetime.now()
+                    created_at=datetime.now().isoformat()  # Convert to string immediately
                 )
                 insights.append(insight)
             
