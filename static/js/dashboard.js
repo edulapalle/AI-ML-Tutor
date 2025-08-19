@@ -268,6 +268,8 @@ class Dashboard {
     }
 
     addMessageToChat(role, content, metadata = {}) {
+        console.log('🚀 addMessageToChat ENTRY:', { role, content_length: content?.length, metadata });
+        
         const chatMessages = document.getElementById('chatMessages');
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${role}`;
@@ -279,6 +281,8 @@ class Dashboard {
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         messageContent.innerHTML = this.formatMessage(content);
+        
+        console.log('🔧 messageContent created, about to process metadata...');
 
         // Debug: Check metadata being passed to addMessageToChat
         console.log('🎯 ADD_MESSAGE_TO_CHAT METADATA:', {
