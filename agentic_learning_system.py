@@ -335,6 +335,31 @@ class LearningPathAgent:
     
     def __init__(self, main_system):
         self.system = main_system
+    
+    def _extract_json_from_response(self, response_content: str, context_name: str = "unknown"):
+        """Helper method to extract JSON from OpenAI responses, handling markdown wrapping"""
+        if not response_content:
+            print(f"❌ Empty response from OpenAI for {context_name}")
+            return None
+            
+        try:
+            # Handle markdown-wrapped JSON (```json ... ```)
+            if response_content.startswith('```'):
+                # Extract JSON from markdown code block
+                import re
+                json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_content, re.DOTALL)
+                if json_match:
+                    response_content = json_match.group(1).strip()
+                else:
+                    # Fallback: remove all ``` markers
+                    response_content = response_content.replace('```json', '').replace('```', '').strip()
+            
+            import json
+            return json.loads(response_content)
+        except json.JSONDecodeError as je:
+            print(f"❌ JSON decode error in {context_name}: {je}")
+            print(f"❌ Raw response: {response_content}")
+            return None
         
     async def analyze_and_recommend(self, user_id: str, learning_history: List[Dict], progress: List[Dict]) -> List[LearningPathRecommendation]:
         """Analyze user's learning path and make autonomous recommendations"""
@@ -488,6 +513,31 @@ class ComprehensionMonitor:
     
     def __init__(self, main_system):
         self.system = main_system
+    
+    def _extract_json_from_response(self, response_content: str, context_name: str = "unknown"):
+        """Helper method to extract JSON from OpenAI responses, handling markdown wrapping"""
+        if not response_content:
+            print(f"❌ Empty response from OpenAI for {context_name}")
+            return None
+            
+        try:
+            # Handle markdown-wrapped JSON (```json ... ```)
+            if response_content.startswith('```'):
+                # Extract JSON from markdown code block
+                import re
+                json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_content, re.DOTALL)
+                if json_match:
+                    response_content = json_match.group(1).strip()
+                else:
+                    # Fallback: remove all ``` markers
+                    response_content = response_content.replace('```json', '').replace('```', '').strip()
+            
+            import json
+            return json.loads(response_content)
+        except json.JSONDecodeError as je:
+            print(f"❌ JSON decode error in {context_name}: {je}")
+            print(f"❌ Raw response: {response_content}")
+            return None
     
     async def analyze_understanding_patterns(self, user_id: str, chat_patterns: List[Dict]) -> List[LearningInsight]:
         """Analyze chat patterns to understand comprehension signals"""
@@ -707,6 +757,31 @@ class GoalAchievementAssistant:
     def __init__(self, main_system):
         self.system = main_system
     
+    def _extract_json_from_response(self, response_content: str, context_name: str = "unknown"):
+        """Helper method to extract JSON from OpenAI responses, handling markdown wrapping"""
+        if not response_content:
+            print(f"❌ Empty response from OpenAI for {context_name}")
+            return None
+            
+        try:
+            # Handle markdown-wrapped JSON (```json ... ```)
+            if response_content.startswith('```'):
+                # Extract JSON from markdown code block
+                import re
+                json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_content, re.DOTALL)
+                if json_match:
+                    response_content = json_match.group(1).strip()
+                else:
+                    # Fallback: remove all ``` markers
+                    response_content = response_content.replace('```json', '').replace('```', '').strip()
+            
+            import json
+            return json.loads(response_content)
+        except json.JSONDecodeError as je:
+            print(f"❌ JSON decode error in {context_name}: {je}")
+            print(f"❌ Raw response: {response_content}")
+            return None
+    
     async def analyze_goal_progress(self, user_id: str, goals: List[Dict], learning_history: List[Dict]) -> Dict[str, Any]:
         """Analyze user's progress toward their goals"""
         print(f"🎯 Goal Achievement Assistant analyzing user {user_id}")
@@ -818,6 +893,31 @@ class ContentCurationAgent:
     
     def __init__(self, main_system):
         self.system = main_system
+    
+    def _extract_json_from_response(self, response_content: str, context_name: str = "unknown"):
+        """Helper method to extract JSON from OpenAI responses, handling markdown wrapping"""
+        if not response_content:
+            print(f"❌ Empty response from OpenAI for {context_name}")
+            return None
+            
+        try:
+            # Handle markdown-wrapped JSON (```json ... ```)
+            if response_content.startswith('```'):
+                # Extract JSON from markdown code block
+                import re
+                json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_content, re.DOTALL)
+                if json_match:
+                    response_content = json_match.group(1).strip()
+                else:
+                    # Fallback: remove all ``` markers
+                    response_content = response_content.replace('```json', '').replace('```', '').strip()
+            
+            import json
+            return json.loads(response_content)
+        except json.JSONDecodeError as je:
+            print(f"❌ JSON decode error in {context_name}: {je}")
+            print(f"❌ Raw response: {response_content}")
+            return None
     
     async def identify_content_gaps(self, user_id: str, learning_history: List[Dict], bookmarks: List[Dict]) -> List[Dict]:
         """Identify gaps in user's learning content and suggest improvements"""
