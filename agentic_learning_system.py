@@ -594,9 +594,18 @@ class ComprehensionMonitor:
     
     def _analyze_question_patterns(self, chat_patterns: List[Dict]) -> Dict[str, Any]:
         """Analyze patterns in user questions"""
-        user_messages = [msg for msg in chat_patterns if msg.get('message_role') == 'user']
+        # Safe filtering with robust type checking
+        user_messages = []
+        for msg in chat_patterns:
+            try:
+                if isinstance(msg, dict) and msg.get('message_role') == 'user':
+                    user_messages.append(msg)
+            except Exception as e:
+                print(f"⚠️ WARNING: Error processing chat message {type(msg)}: {e}")
+                continue
         
         if not user_messages:
+            print("📝 No user messages found in chat patterns")
             return {}
         
         # Count question types
@@ -610,68 +619,98 @@ class ComprehensionMonitor:
         }
         
         for msg in user_messages:
-            content = msg.get('message_content', '').lower()
-            if content.startswith(('what is', 'what are')):
-                question_types['what_is'] += 1
-            elif content.startswith(('how does', 'how do', 'how can', 'how to')):
-                question_types['how_does'] += 1
-            elif 'why' in content[:10]:
-                question_types['why'] += 1
-            elif 'example' in content:
-                question_types['examples'] += 1
-            elif any(word in content for word in ['difference', 'compare', 'vs', 'versus']):
-                question_types['difference'] += 1
-            elif 'explain' in content:
-                question_types['explain'] += 1
+            try:
+                content = msg.get('message_content', '').lower()
+                if content.startswith(('what is', 'what are')):
+                    question_types['what_is'] += 1
+                elif content.startswith(('how does', 'how do', 'how can', 'how to')):
+                    question_types['how_does'] += 1
+                elif 'why' in content[:10]:
+                    question_types['why'] += 1
+                elif 'example' in content:
+                    question_types['examples'] += 1
+                elif any(word in content for word in ['difference', 'compare', 'vs', 'versus']):
+                    question_types['difference'] += 1
+                elif 'explain' in content:
+                    question_types['explain'] += 1
+            except Exception as e:
+                print(f"⚠️ WARNING: Error analyzing message content: {e}")
+                continue
         
         total_questions = sum(question_types.values())
         if total_questions > 0:
             question_types = {k: v/total_questions for k, v in question_types.items()}
         
+        # Calculate average message length safely
+        total_length = 0
+        valid_messages = 0
+        for msg in user_messages:
+            try:
+                content = msg.get('message_content', '')
+                total_length += len(content)
+                valid_messages += 1
+            except Exception as e:
+                print(f"⚠️ WARNING: Error calculating message length: {e}")
+                continue
+        
+        avg_length = total_length / valid_messages if valid_messages > 0 else 0
+        
         return {
             'question_types_distribution': question_types,
             'total_questions': len(user_messages),
-            'average_message_length': sum(len(msg.get('message_content', '')) for msg in user_messages) / len(user_messages)
+            'average_message_length': avg_length
         }
     
     def _detect_confusion_signals(self, chat_patterns: List[Dict]) -> List[Dict]:
         """Detect signals of user confusion"""
         confusion_signals = []
         
-        user_messages = [msg for msg in chat_patterns if msg.get('message_role') == 'user']
+        # Safe filtering with type checking
+        user_messages = [msg for msg in chat_patterns if isinstance(msg, dict) and msg.get('message_role') == 'user']
         
         for i, msg in enumerate(user_messages):
-            content = msg.get('message_content', '').lower()
-            
-            # Detect confusion patterns
-            confusion_indicators = [
-                'i don\'t understand',
-                'confused',
-                'not clear',
-                'what do you mean',
-                'i\'m lost',
-                'can you explain again',
-                'still not getting it'
-            ]
-            
-            if any(indicator in content for indicator in confusion_indicators):
-                confusion_signals.append({
-                    'message': content,
-                    'timestamp': msg.get('message_timestamp'),
-                    'signal_strength': 0.8
-                })
-            
-            # Detect repeated questions about same topic
-            if i > 0:
-                prev_content = user_messages[i-1].get('message_content', '').lower()
-                similarity = len(set(content.split()) & set(prev_content.split())) / max(len(content.split()), len(prev_content.split()), 1)
-                if similarity > 0.5:
+            try:
+                content = msg.get('message_content', '').lower()
+                
+                # Detect confusion patterns
+                confusion_indicators = [
+                    'i don\'t understand',
+                    'confused',
+                    'not clear',
+                    'what do you mean',
+                    'i\'m lost',
+                    'can you explain again',
+                    'still not getting it'
+                ]
+                
+                if any(indicator in content for indicator in confusion_indicators):
                     confusion_signals.append({
                         'message': content,
                         'timestamp': msg.get('message_timestamp'),
-                        'signal_strength': 0.6,
-                        'type': 'repeated_question'
+                        'signal_strength': 0.8
                     })
+                
+                # Detect repeated questions about same topic
+                if i > 0:
+                    try:
+                        prev_content = user_messages[i-1].get('message_content', '').lower()
+                        content_words = set(content.split())
+                        prev_words = set(prev_content.split())
+                        if content_words and prev_words:
+                            similarity = len(content_words & prev_words) / max(len(content_words), len(prev_words), 1)
+                            if similarity > 0.5:
+                                confusion_signals.append({
+                                    'message': content,
+                                    'timestamp': msg.get('message_timestamp'),
+                                    'signal_strength': 0.6,
+                                    'type': 'repeated_question'
+                                })
+                    except Exception as e:
+                        print(f"⚠️ WARNING: Error comparing messages: {e}")
+                        continue
+            except Exception as e:
+                print(f"⚠️ WARNING: Error detecting confusion signals: {e}")
+                continue
         
         return confusion_signals
     
@@ -679,43 +718,48 @@ class ComprehensionMonitor:
         """Detect signals of user mastery"""
         mastery_signals = []
         
-        user_messages = [msg for msg in chat_patterns if msg.get('message_role') == 'user']
+        # Safe filtering with type checking
+        user_messages = [msg for msg in chat_patterns if isinstance(msg, dict) and msg.get('message_role') == 'user']
         
         for msg in user_messages:
-            content = msg.get('message_content', '').lower()
-            
-            mastery_indicators = [
-                'i understand',
-                'that makes sense',
-                'i see',
-                'got it',
-                'thanks',
-                'clear now',
-                'i get it'
-            ]
-            
-            if any(indicator in content for indicator in mastery_indicators):
-                mastery_signals.append({
-                    'message': content,
-                    'timestamp': msg.get('message_timestamp'),
-                    'signal_strength': 0.7
-                })
-            
-            # Advanced questions indicate understanding
-            advanced_patterns = [
-                'what about',
-                'how would this work with',
-                'in comparison to',
-                'what happens if'
-            ]
-            
-            if any(pattern in content for pattern in advanced_patterns):
-                mastery_signals.append({
-                    'message': content,
-                    'timestamp': msg.get('message_timestamp'),
-                    'signal_strength': 0.8,
-                    'type': 'advanced_inquiry'
-                })
+            try:
+                content = msg.get('message_content', '').lower()
+                
+                mastery_indicators = [
+                    'i understand',
+                    'that makes sense',
+                    'i see',
+                    'got it',
+                    'thanks',
+                    'clear now',
+                    'i get it'
+                ]
+                
+                if any(indicator in content for indicator in mastery_indicators):
+                    mastery_signals.append({
+                        'message': content,
+                        'timestamp': msg.get('message_timestamp'),
+                        'signal_strength': 0.7
+                    })
+                
+                # Advanced questions indicate understanding
+                advanced_patterns = [
+                    'what about',
+                    'how would this work with',
+                    'in comparison to',
+                    'what happens if'
+                ]
+                
+                if any(pattern in content for pattern in advanced_patterns):
+                    mastery_signals.append({
+                        'message': content,
+                        'timestamp': msg.get('message_timestamp'),
+                        'signal_strength': 0.8,
+                        'type': 'advanced_inquiry'
+                    })
+            except Exception as e:
+                print(f"⚠️ WARNING: Error detecting mastery signals: {e}")
+                continue
         
         return mastery_signals
     
