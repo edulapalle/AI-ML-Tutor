@@ -639,6 +639,175 @@ async def get_user_learning_path(user_id: str) -> List[str]:
         print(f"   ❌ Failed to get learning path: {e}")
         return []
 
+# =============================================================================
+# PROGRESS TRACKING FUNCTIONS
+# =============================================================================
+
+async def update_user_progress(user_id: str, topic: str, time_spent_minutes: int = 5, interaction_quality: float = 0.8):
+    """Update user's progress on a specific topic"""
+    try:
+        if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+            print(f"   ❌ Supabase config missing for progress tracking")
+            return
+        
+        async with httpx.AsyncClient(timeout=10) as client:
+            headers = supabase_headers()
+            
+            # Check if progress record exists
+            check_url = f"{SUPABASE_URL}/rest/v1/progress_tracking"
+            check_params = {
+                "user_id": f"eq.{user_id}",
+                "topic": f"eq.{topic}",
+                "select": "id,proficiency_level,time_spent_minutes"
+            }
+            
+            check_response = await client.get(check_url, headers=headers, params=check_params)
+            
+            if check_response.status_code == 200:
+                existing_records = check_response.json()
+                
+                if existing_records:
+                    # Update existing record
+                    existing = existing_records[0]
+                    current_proficiency = existing.get('proficiency_level', 1)
+                    current_time = existing.get('time_spent_minutes', 0)
+                    
+                    # Calculate new proficiency (1-5 scale based on interactions and quality)
+                    proficiency_boost = max(0.1, interaction_quality * 0.3)  # 0.1 to 0.3 boost per interaction
+                    new_proficiency = min(5.0, current_proficiency + proficiency_boost)
+                    
+                    update_data = {
+                        "proficiency_level": round(new_proficiency, 1),
+                        "time_spent_minutes": current_time + time_spent_minutes,
+                        "last_studied": datetime.now().isoformat(),
+                        "updated_at": datetime.now().isoformat()
+                    }
+                    
+                    update_url = f"{SUPABASE_URL}/rest/v1/progress_tracking"
+                    update_params = {"id": f"eq.{existing['id']}"}
+                    
+                    update_response = await client.patch(
+                        update_url, 
+                        headers=headers, 
+                        params=update_params,
+                        json=update_data
+                    )
+                    
+                    if update_response.status_code in [200, 204]:
+                        print(f"   📈 Updated progress for {topic}: proficiency {new_proficiency:.1f}/5, total time {current_time + time_spent_minutes}min")
+                    else:
+                        print(f"   ❌ Failed to update progress: {update_response.status_code}")
+                        
+                else:
+                    # Create new progress record
+                    initial_proficiency = max(1.0, interaction_quality * 2.0)  # Start between 1.0-2.0
+                    
+                    progress_data = {
+                        "user_id": user_id,
+                        "topic": topic,
+                        "proficiency_level": round(initial_proficiency, 1),
+                        "time_spent_minutes": time_spent_minutes,
+                        "last_studied": datetime.now().isoformat(),
+                        "created_at": datetime.now().isoformat(),
+                        "updated_at": datetime.now().isoformat()
+                    }
+                    
+                    insert_response = await client.post(
+                        f"{SUPABASE_URL}/rest/v1/progress_tracking",
+                        headers=headers,
+                        json=progress_data
+                    )
+                    
+                    if insert_response.status_code == 201:
+                        print(f"   📊 Created new progress for {topic}: proficiency {initial_proficiency:.1f}/5, time {time_spent_minutes}min")
+                    elif insert_response.status_code == 404:
+                        print(f"   📝 Progress tracking table doesn't exist - feature disabled for now")
+                    else:
+                        print(f"   ❌ Failed to create progress record: {insert_response.status_code}")
+            else:
+                print(f"   ❌ Failed to check existing progress: {check_response.status_code}")
+                
+    except Exception as e:
+        print(f"   ❌ Failed to update progress: {e}")
+
+async def get_user_progress_data(user_id: str) -> List[Dict]:
+    """Get user's complete progress tracking data"""
+    try:
+        if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+            print(f"   ❌ Supabase config missing for progress retrieval")
+            return []
+        
+        async with httpx.AsyncClient(timeout=10) as client:
+            url = f"{SUPABASE_URL}/rest/v1/progress_tracking"
+            headers = supabase_headers()
+            params = {
+                "user_id": f"eq.{user_id}",
+                "order": "last_studied.desc",
+                "select": "topic,proficiency_level,time_spent_minutes,last_studied,created_at"
+            }
+            
+            response = await client.get(url, headers=headers, params=params)
+            
+            if response.status_code == 200:
+                progress_data = response.json()
+                print(f"   📊 Retrieved progress data for {len(progress_data)} topics")
+                return progress_data
+            elif response.status_code == 404:
+                print(f"   📝 Progress tracking table doesn't exist - returning empty data")
+                return []
+            else:
+                print(f"   ❌ Failed to get progress data: {response.status_code}")
+                return []
+        
+    except Exception as e:
+        print(f"   ❌ Failed to get progress data: {e}")
+        return []
+
+# =============================================================================
+# PROGRESS TRACKING API ENDPOINTS
+# =============================================================================
+
+@app.get("/api/progress/{user_id}")
+async def get_user_progress_endpoint(user_id: str, current_user: UserProfile = Depends(get_current_user)):
+    """Get user's progress tracking data (for testing and debugging)"""
+    
+    # Security check: only allow users to view their own progress (or admin access later)
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Can only view your own progress data")
+    
+    try:
+        progress_data = await get_user_progress_data(user_id)
+        
+        # Calculate summary statistics
+        if progress_data:
+            total_topics = len(progress_data)
+            avg_proficiency = sum(p.get('proficiency_level', 1) for p in progress_data) / total_topics
+            total_time = sum(p.get('time_spent_minutes', 0) for p in progress_data)
+            
+            summary = {
+                "total_topics_studied": total_topics,
+                "average_proficiency": round(avg_proficiency, 2),
+                "total_time_minutes": total_time,
+                "total_time_hours": round(total_time / 60, 1)
+            }
+        else:
+            summary = {
+                "total_topics_studied": 0,
+                "average_proficiency": 0,
+                "total_time_minutes": 0,
+                "total_time_hours": 0
+            }
+        
+        return {
+            "user_id": user_id,
+            "summary": summary,
+            "progress_details": progress_data
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in progress endpoint: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve progress data")
+
 def generate_next_concepts_from_path(user_topics: List[str], current_topic: str = None) -> List[str]:
     """Generate next learning concepts based on user's learning path"""
     
@@ -1431,6 +1600,25 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
     if extracted_topic and current_user:
         await store_user_topic(current_user.id, extracted_topic)
         print(f"   💾 Stored topic for user: {current_user.id}")
+        
+        # Update progress tracking for this topic
+        # Calculate interaction quality based on query complexity and intent
+        query_length = len(request.message.split())
+        interaction_quality = min(1.0, max(0.3, query_length / 10.0))  # 0.3-1.0 based on question length
+        
+        # Estimate time spent (5-15 minutes based on intent complexity)
+        time_mapping = {
+            "explain": 8,      # Moderate complexity
+            "define": 5,       # Simple definition
+            "compare": 12,     # Complex comparison  
+            "examples": 10,    # Practical examples
+            "next": 3,         # Quick navigation
+            "quiz": 15         # Interactive learning
+        }
+        estimated_time = time_mapping.get(intent, 8)  # Default to 8 minutes
+        
+        await update_user_progress(current_user.id, extracted_topic, estimated_time, interaction_quality)
+        print(f"   📊 Updated progress for {extracted_topic}: quality={interaction_quality:.2f}, time={estimated_time}min")
     
     # Get user's learning path for next concepts
     next_concepts = []
