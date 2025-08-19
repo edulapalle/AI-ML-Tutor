@@ -55,6 +55,30 @@ class ComprehensionSignal:
 class AgenticLearningSystem:
     """Main agentic learning system orchestrator"""
     
+    def _extract_json_from_response(self, response_content: str, context_name: str = "unknown"):
+        """Helper method to extract JSON from OpenAI responses, handling markdown wrapping"""
+        if not response_content:
+            print(f"❌ Empty response from OpenAI for {context_name}")
+            return None
+            
+        try:
+            # Handle markdown-wrapped JSON (```json ... ```)
+            if response_content.startswith('```'):
+                # Extract JSON from markdown code block
+                import re
+                json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_content, re.DOTALL)
+                if json_match:
+                    response_content = json_match.group(1).strip()
+                else:
+                    # Fallback: remove all ``` markers
+                    response_content = response_content.replace('```json', '').replace('```', '').strip()
+            
+            return json.loads(response_content)
+        except json.JSONDecodeError as je:
+            print(f"❌ JSON decode error in {context_name}: {je}")
+            print(f"❌ Raw response: {response_content}")
+            return None
+    
     def __init__(self):
         self.oai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.supabase_url = os.getenv("SUPABASE_URL")
@@ -253,16 +277,9 @@ class AgenticLearningSystem:
             response_content = response.choices[0].message.content.strip()
             print(f"🤖 Synthesis OpenAI response (first 200 chars): {response_content[:200]}")
             
-            if not response_content:
-                print("❌ Empty response from OpenAI for synthesis")
+            synthesis = self._extract_json_from_response(response_content, "synthesis")
+            if synthesis is None:
                 synthesis = {"priority_actions": [], "key_insights": [], "next_steps": [], "risk_factors": [], "strengths": []}
-            else:
-                try:
-                    synthesis = json.loads(response_content)
-                except json.JSONDecodeError as je:
-                    print(f"❌ JSON decode error in synthesis: {je}")
-                    print(f"❌ Raw response: {response_content}")
-                    synthesis = {"priority_actions": [], "key_insights": [], "next_steps": [], "risk_factors": [], "strengths": []}
             
             # Execute autonomous actions
             actions_taken = []
@@ -441,16 +458,9 @@ class LearningPathAgent:
             response_content = response.choices[0].message.content.strip()
             print(f"🛤️ Path recommendations OpenAI response (first 200 chars): {response_content[:200]}")
             
-            if not response_content:
-                print("❌ Empty response from OpenAI for path recommendations")
+            recommendations_data = self._extract_json_from_response(response_content, "path recommendations")
+            if recommendations_data is None:
                 recommendations_data = []
-            else:
-                try:
-                    recommendations_data = json.loads(response_content)
-                except json.JSONDecodeError as je:
-                    print(f"❌ JSON decode error in path recommendations: {je}")
-                    print(f"❌ Raw response: {response_content}")
-                    recommendations_data = []
             
             # Convert to LearningPathRecommendation objects
             recommendations = []
@@ -668,16 +678,9 @@ class ComprehensionMonitor:
             response_content = response.choices[0].message.content.strip()
             print(f"🧠 Comprehension insights OpenAI response (first 200 chars): {response_content[:200]}")
             
-            if not response_content:
-                print("❌ Empty response from OpenAI for comprehension insights")
+            insights_data = self._extract_json_from_response(response_content, "comprehension insights")
+            if insights_data is None:
                 insights_data = []
-            else:
-                try:
-                    insights_data = json.loads(response_content)
-                except json.JSONDecodeError as je:
-                    print(f"❌ JSON decode error in comprehension insights: {je}")
-                    print(f"❌ Raw response: {response_content}")
-                    insights_data = []
             
             insights = []
             for insight_data in insights_data:
@@ -785,16 +788,8 @@ class GoalAchievementAssistant:
             response_content = response.choices[0].message.content.strip()
             print(f"🎯 Goal interventions OpenAI response (first 200 chars): {response_content[:200]}")
             
-            if not response_content:
-                print("❌ Empty response from OpenAI for goal interventions")
-                return []
-            else:
-                try:
-                    return json.loads(response_content)
-                except json.JSONDecodeError as je:
-                    print(f"❌ JSON decode error in goal interventions: {je}")
-                    print(f"❌ Raw response: {response_content}")
-                    return []
+            result = self._extract_json_from_response(response_content, "goal interventions")
+            return result if result is not None else []
             
         except Exception as e:
             print(f"❌ Error generating goal interventions: {e}")
@@ -938,16 +933,8 @@ class ContentCurationAgent:
             response_content = response.choices[0].message.content.strip()
             print(f"📚 Content recommendations OpenAI response (first 200 chars): {response_content[:200]}")
             
-            if not response_content:
-                print("❌ Empty response from OpenAI for content recommendations")
-                return []
-            else:
-                try:
-                    return json.loads(response_content)
-                except json.JSONDecodeError as je:
-                    print(f"❌ JSON decode error in content recommendations: {je}")
-                    print(f"❌ Raw response: {response_content}")
-                    return []
+            result = self._extract_json_from_response(response_content, "content recommendations")
+            return result if result is not None else []
             
         except Exception as e:
             print(f"❌ Error generating content recommendations: {e}")
