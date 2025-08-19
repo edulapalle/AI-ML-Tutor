@@ -1910,6 +1910,15 @@ class Dashboard {
         const insights = analysis.comprehension_insights || [];
         const recommendations = analysis.learning_path_recommendations || [];
 
+        // Debug logging to see the structure
+        console.log('🔍 Analysis data structure:', {
+            synthesis,
+            insights,
+            recommendations,
+            next_steps: synthesis.next_steps,
+            next_steps_type: typeof synthesis.next_steps
+        });
+
         let html = '';
 
         // Show key insights
@@ -1923,11 +1932,21 @@ class Dashboard {
         }
 
         // Show next steps
-        if (synthesis.next_steps) {
+        if (synthesis.next_steps && synthesis.next_steps.length > 0) {
+            const formattedActions = Array.isArray(synthesis.next_steps) 
+                ? synthesis.next_steps.map(action => {
+                    if (typeof action === 'object') {
+                        // If action is an object, extract meaningful text
+                        return action.action || action.title || action.description || JSON.stringify(action);
+                    }
+                    return action;
+                }).join('<br>• ')
+                : synthesis.next_steps;
+                
             html += `
                 <div class="insight-item">
                     <div class="insight-type">Recommended Actions</div>
-                    <div class="insight-suggestion">${synthesis.next_steps}</div>
+                    <div class="insight-suggestion">• ${formattedActions}</div>
                 </div>
             `;
         }
