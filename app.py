@@ -1000,7 +1000,7 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
         # First, check if this is a quiz response (higher priority than general follow-up)
         for msg in recent_messages:
             if msg.get("role") == "assistant" and any(quiz_indicator in msg.get("content", "").lower() 
-                                                    for quiz_indicator in ["quiz", "question 1", "question 2", "question 3", "a)", "b)", "c)", "d)"]):
+                                                    for quiz_indicator in ["quiz", "question 1", "question 2", "question 3","question 4", "a)", "b)", "c)", "d)"]):
                 is_quiz_response = True
                 break
         
@@ -1027,7 +1027,9 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
             'but what', 'and what', 'also', 'additionally', 'furthermore',
             'what does that mean', 'how does that work', 'why is that',
             'what happens if', 'what happens when', 'in that case',
-            'so if', 'so when', 'so what', 'but why', 'but how', 'continue'
+            'so if', 'so when', 'so what', 'but why', 'but how', 'continue',
+            'can you help me understand', 'help me understand', 'understand more',
+            'more about', 'elaborate', 'clarify', 'expand on'
         ]
         
         # Check for pronouns that indicate reference to previous context
@@ -1609,13 +1611,18 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
     
     print(f"   ✅ ABUSE PROTECTION: Query allowed - {protection_result.get('validation_method', 'N/A')} validation (latency: {int((time.time() - t0) * 1000)}ms)")
     
-    # 1) Advanced Guardrails with conversation context (keeping existing guardrails as backup)
+    # 1) Get conversation context for guardrails and follow-up capabilities  
+    conversation_context = []
+    if current_user:
+        conversation_context = await get_conversation_context(current_user.id, limit=6)
+    
+    # 2) Advanced Guardrails with conversation context (keeping existing guardrails as backup)
     from run_gaurdrails import run_guardrails
     
     print(f"   🛡️ Running comprehensive guardrails...")
     guardrail_result = await run_guardrails(
         request.message,
-        conversation_history=request.conversation_history,
+        conversation_history=conversation_context,  # Use our new conversation context!
         use_llm_scope=True,
         use_moderation=True
     )
@@ -1826,11 +1833,6 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
         title = ctx.get('title', 'No title')[:40]
         doc_id = ctx.get('doc_id', 'unknown')
         print(f"   {i}. [{source}] {title}... (id: {doc_id})")
-    
-    # 7) Get conversation context for follow-up capabilities
-    conversation_context = []
-    if current_user:
-        conversation_context = await get_conversation_context(current_user.id, limit=6)
     
     # 8) Generate structured response with conversation context
     print(f"\n💭 RESPONSE GENERATION:")

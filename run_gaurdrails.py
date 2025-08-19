@@ -100,6 +100,9 @@ def is_in_educational_context(text: str, conversation_history: Optional[list] = 
     quiz_patterns = [
         # Multiple choice answers
         r"^[a-d]$", r"^option [a-d]$", r"^choice [a-d]$",
+        # Numbered quiz answers like "1A", "2B", etc.
+        r"^\d+\s*[a-d]$", r"^\d+\s+[a-d]$", r"^\d+[\.\)]\s*[a-d]$",
+        r"^[a-d]\d*$", r"^answer\s*[a-d]$", r"^ans\s*[a-d]$",
         # Short technical terms (common in ML)
         r"^(cnn|rnn|lstm|gru|bert|gpt|svm|knn|pca|nlp|ai|ml)$",
         # Yes/No answers
