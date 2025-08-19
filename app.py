@@ -856,6 +856,29 @@ async def get_user_chat_history(user_id: str, limit: int = 20) -> List[Dict]:
         print(f"   ❌ Error fetching chat history: {e}")
         return []
 
+async def get_conversation_context(user_id: str, limit: int = 6) -> List[Dict]:
+    """Get recent conversation context for follow-up capabilities"""
+    try:
+        chat_history = await get_user_chat_history(user_id, limit=limit)
+        
+        # Convert to the format expected by build_intent_based_prompt
+        conversation_context = []
+        for msg in reversed(chat_history):  # Reverse to get chronological order
+            role = "assistant" if msg.get('message_role') == 'assistant' else "user"
+            content = msg.get('message_content', '')
+            conversation_context.append({
+                "role": role,
+                "content": content,
+                "timestamp": msg.get('message_timestamp')
+            })
+        
+        print(f"   💬 Retrieved {len(conversation_context)} messages for conversation context")
+        return conversation_context
+        
+    except Exception as e:
+        print(f"   ⚠️ Failed to get conversation context: {e}")
+        return []
+
 def generate_next_concepts_from_path(user_topics: List[str], current_topic: str = None) -> List[str]:
     """Generate next learning concepts based on user's learning path"""
     
@@ -964,27 +987,108 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
         parts.append(ctx.get("text", "") or "")
     ctx_text = "\n\n---\n\n".join(parts)
     
-    # Check if this is a quiz follow-up response
+    # Analyze conversation context for follow-up detection
+    is_follow_up = False
     is_quiz_response = False
-    if conversation_history:
-        recent_messages = conversation_history[-2:] if len(conversation_history) >= 2 else conversation_history
+    follow_up_context = ""
+    recent_topic = ""
+    
+    if conversation_history and len(conversation_history) > 0:
+        # Check if this is a follow-up conversation
+        recent_messages = conversation_history[-4:] if len(conversation_history) >= 4 else conversation_history
+        
+        # First, check if this is a quiz response (higher priority than general follow-up)
         for msg in recent_messages:
-            if msg.get("role") == "assistant" and "quiz" in msg.get("content", "").lower():
+            if msg.get("role") == "assistant" and any(quiz_indicator in msg.get("content", "").lower() 
+                                                    for quiz_indicator in ["quiz", "question 1", "question 2", "question 3", "a)", "b)", "c)", "d)"]):
                 is_quiz_response = True
                 break
+        
+        # Check if the current question looks like a quiz answer
+        quiz_answer_patterns = [
+            # Pattern: just letters/numbers (1A, 2B, etc.)
+            r'^\s*\d*[a-d]\s*$',  # 1A, 2B, A, B, etc.
+            r'^\s*[a-d]\d*\s*$',  # A1, B2, etc.
+            r'^\s*\d+\s*[a-d]\s*$',  # 1 A, 2 B, etc.
+            r'^\s*[a-d]\s+\d*\s*$',  # A 1, B 2, etc.
+            # Pattern: answer format
+            r'^\s*(answer|ans|a)[\s:]*[a-d]\d*\s*$',
+            r'^\s*\d+[\s\.\)]*[a-d]\s*$',  # 1. A, 1) B, etc.
+        ]
+        
+        import re
+        question_clean = question.strip().lower()
+        if any(re.match(pattern, question_clean, re.IGNORECASE) for pattern in quiz_answer_patterns):
+            is_quiz_response = True
+        
+        # Look for follow-up indicators in the current question (if not a quiz response)
+        follow_up_indicators = [
+            'can you explain more', 'tell me more', 'what about', 'how about',
+            'but what', 'and what', 'also', 'additionally', 'furthermore',
+            'what does that mean', 'how does that work', 'why is that',
+            'what happens if', 'what happens when', 'in that case',
+            'so if', 'so when', 'so what', 'but why', 'but how', 'continue'
+        ]
+        
+        # Check for pronouns that indicate reference to previous context
+        pronoun_indicators = [
+            'that', 'this', 'it', 'them', 'those', 'these', 'which'
+        ]
+        
+        question_lower = question.lower()
+        has_follow_up_words = any(indicator in question_lower for indicator in follow_up_indicators)
+        has_pronouns = any(pronoun in question_lower for pronoun in pronoun_indicators)
+        
+        # Determine if this is a follow-up (more refined logic, but quiz responses take priority)
+        if not is_quiz_response:
+            is_follow_up = (has_follow_up_words or (has_pronouns and len(question.split()) < 10)) and len(recent_messages) > 0
+        
+        if is_quiz_response:
+            # Build quiz response context
+            follow_up_context = "\n\n🎯 QUIZ CONTEXT (for answer evaluation):\n"
+            for msg in recent_messages:
+                role = msg.get("role", "unknown")
+                content = msg.get("content", "")
+                # Include full quiz context for proper evaluation
+                if role == "assistant" and any(quiz_word in content.lower() for quiz_word in ["quiz", "question", "a)", "b)", "c)", "d)"]):
+                    follow_up_context += f"Previous Quiz: {content}\n\n"
+                elif role == "user":
+                    follow_up_context += f"Student Response: {content}\n\n"
+            
+            print(f"   🎯 Detected quiz response: '{question}'")
+        elif is_follow_up:
+            # Build conversation context for follow-up
+            follow_up_context = "\n\n🔗 CONVERSATION CONTEXT (for follow-up):\n"
+            for msg in recent_messages:
+                role = msg.get("role", "unknown")
+                content = msg.get("content", "")
+                # Limit content length but keep key information
+                if len(content) > 300:
+                    content = content[:300] + "..."
+                follow_up_context += f"{role.title()}: {content}\n\n"
+            
+            # Extract recent topic from last assistant message
+            for msg in reversed(recent_messages):
+                if msg.get("role") == "assistant":
+                    assistant_content = msg.get("content", "").lower()
+                    # Try to extract topic from assistant's response
+                    topics = ['machine learning', 'deep learning', 'neural networks', 'supervised learning', 
+                             'unsupervised learning', 'reinforcement learning', 'clustering', 'classification']
+                    for topic in topics:
+                        if topic in assistant_content:
+                            recent_topic = topic
+                            break
+                    break
+            
+            print(f"   🔗 Detected follow-up conversation (topic: {recent_topic})")
     
-    # Base system message
-    base_system = f"You are a kind ML tutor for a {audience}. Use clear, educational language. Be accurate and safe."
-    
-    # Add conversation context if this is a quiz response
-    conversation_context = ""
-    if is_quiz_response and conversation_history:
-        conversation_context = "\n\nConversation context (recent exchanges):\n"
-        for msg in conversation_history[-3:]:
-            role = msg.get("role", "unknown")
-            content = msg.get("content", "")[:200]  # Limit context length
-            conversation_context += f"{role.title()}: {content}\n"
-        conversation_context += "\n"
+    # Base system message with context awareness
+    if is_quiz_response:
+        base_system = f"You are a kind ML tutor for a {audience}. The student is responding to a quiz question. Evaluate their answer, provide feedback (correct/incorrect), explain why, and continue the educational conversation naturally. Be encouraging and educational."
+    elif is_follow_up:
+        base_system = f"You are a kind ML tutor for a {audience}. This is a FOLLOW-UP question to our recent conversation. Build upon what we just discussed. Reference previous context naturally. Use clear, educational language."
+    else:
+        base_system = f"You are a kind ML tutor for a {audience}. Use clear, educational language. Be accurate and safe."
     
     # Intent-specific prompt templates
     if intent == "explain":
@@ -1069,13 +1173,17 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
             "5) Further learning opportunities"
         )
     
-    # Special handling for quiz responses
+    # Special instructions for different conversation types
+    special_instructions = ""
     if is_quiz_response:
-        quiz_instruction = "\n\nIMPORTANT: The user is responding to a quiz question. Provide feedback on their answer, explain why it's correct/incorrect, and continue the educational conversation naturally."
-    else:
-        quiz_instruction = ""
+        special_instructions = "\n\nIMPORTANT: This is a quiz answer evaluation. 1) State if the answer is correct/incorrect, 2) Explain why, 3) Provide the correct explanation, 4) Continue the educational conversation. Be encouraging and supportive."
+    elif is_follow_up:
+        special_instructions = "\n\nIMPORTANT: This is a follow-up question. Build upon our previous conversation naturally. Reference what we discussed before. Don't repeat basic definitions unless necessary. Focus on extending or clarifying the previous topic."
+    
+    # Determine which context to use
+    context_to_use = follow_up_context if (is_quiz_response or is_follow_up) else ""
 
-    return f"""{base_system}{conversation_context}
+    return f"""{base_system}{context_to_use}
 Context (use to answer):
 {ctx_text}
 
@@ -1085,7 +1193,7 @@ User question: {question}
 
 Suggested next concepts: {', '.join(next_concepts) if next_concepts else 'Explore related ML topics'}
 
-Keep response educational, engaging, and under 200 words. Always maintain learning focus.{quiz_instruction}"""
+Keep response educational, engaging, and under 200 words. Always maintain learning focus.{special_instructions}"""
 
 def generate_answer(prompt: str) -> str:
     """Generate answer using OpenAI"""
@@ -1719,11 +1827,17 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
         doc_id = ctx.get('doc_id', 'unknown')
         print(f"   {i}. [{source}] {title}... (id: {doc_id})")
     
-    # 7) Generate structured response
+    # 7) Get conversation context for follow-up capabilities
+    conversation_context = []
+    if current_user:
+        conversation_context = await get_conversation_context(current_user.id, limit=6)
+    
+    # 8) Generate structured response with conversation context
     print(f"\n💭 RESPONSE GENERATION:")
     print(f"   🎯 Audience: {request.audience}")
-    print(f"   📝 Building structured prompt...")
-    prompt = build_intent_based_prompt(intent, request.audience, request.message, final_contexts, next_concepts, request.conversation_history)
+    print(f"   💬 Conversation context: {len(conversation_context)} messages")
+    print(f"   📝 Building structured prompt with follow-up context...")
+    prompt = build_intent_based_prompt(intent, request.audience, request.message, final_contexts, next_concepts, conversation_context)
     print(f"   🤖 Generating answer with GPT...")
     answer = generate_answer(prompt)
     print(f"   ✅ Generated {len(answer)} character response")
@@ -2340,6 +2454,14 @@ async def health_check():
 async def ping():
     """Simplest possible health check endpoint"""
     return {"status": "ok"}
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Return a simple favicon to stop 404 errors in logs"""
+    from fastapi.responses import Response
+    # Return a minimal 1x1 transparent PNG favicon
+    favicon_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
+    return Response(content=favicon_data, media_type="image/png")
 
 @app.get("/api/service-status")
 async def service_connectivity_check():
