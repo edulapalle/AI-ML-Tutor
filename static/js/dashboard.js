@@ -2100,36 +2100,7 @@ class Dashboard {
         }
     }
 
-    addMessageToChat(role, content) {
-        const chatMessages = document.getElementById('chatMessages');
-        if (!chatMessages) return;
-
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${role}`;
-
-        if (role === 'user') {
-            messageDiv.innerHTML = `
-                <div class="message-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="message-content">
-                    <div class="message-text">${this.escapeHtml(content)}</div>
-                </div>
-            `;
-        } else {
-            messageDiv.innerHTML = `
-                <div class="message-avatar">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="message-content">
-                    <div class="message-text">${this.formatResponse(content)}</div>
-                </div>
-            `;
-        }
-
-        chatMessages.appendChild(messageDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+    // REMOVED DUPLICATE addMessageToChat - using the full-featured version above
 
     showTeddyBearIndicator() {
         this.isLoading = true;
