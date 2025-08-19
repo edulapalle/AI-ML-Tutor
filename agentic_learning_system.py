@@ -324,29 +324,47 @@ class AgenticLearningSystem:
                 "actions_taken": []
             }
     
-    async def _execute_autonomous_action(self, user_id: str, action: str) -> Optional[Dict]:
+    async def _execute_autonomous_action(self, user_id: str, action) -> Optional[Dict]:
         """Execute autonomous learning actions"""
         print(f"🤖 Executing autonomous action: {action}")
         
         try:
-            if "suggest prerequisite" in action.lower():
+            # Handle both string actions (old format) and dict actions (new format)
+            if isinstance(action, dict):
+                action_text = action.get("action", "")
+                action_description = f"{action_text} (with additional data: {action})"
+            else:
+                action_text = str(action)
+                action_description = action_text
+            
+            action_lower = action_text.lower()
+            
+            if "suggest prerequisite" in action_lower or "prerequisite" in action_lower:
                 # Auto-add prerequisite topics to user's suggested next topics
-                return {"action": "prerequisite_suggestion", "status": "completed", "description": action}
+                return {"action": "prerequisite_suggestion", "status": "completed", "description": action_description}
             
-            elif "create custom content" in action.lower():
+            elif "create custom content" in action_lower or "content" in action_lower:
                 # Generate custom learning material
-                return {"action": "content_creation", "status": "completed", "description": action}
+                return {"action": "content_creation", "status": "completed", "description": action_description}
             
-            elif "adjust difficulty" in action.lower():
+            elif "adjust difficulty" in action_lower or "difficulty" in action_lower:
                 # Note difficulty preference for future responses
-                return {"action": "difficulty_adjustment", "status": "completed", "description": action}
+                return {"action": "difficulty_adjustment", "status": "completed", "description": action_description}
             
-            elif "recommend break" in action.lower():
+            elif "recommend break" in action_lower or "wellness" in action_lower:
                 # Add wellness recommendation
-                return {"action": "wellness_recommendation", "status": "completed", "description": action}
+                return {"action": "wellness_recommendation", "status": "completed", "description": action_description}
+            
+            elif "goal" in action_lower or "focus" in action_lower:
+                # Goal-setting action
+                return {"action": "goal_setting", "status": "completed", "description": action_description}
+            
+            elif "next topic" in action_lower or "progression" in action_lower:
+                # Learning path progression
+                return {"action": "learning_progression", "status": "completed", "description": action_description}
             
             else:
-                return {"action": "general_recommendation", "status": "noted", "description": action}
+                return {"action": "general_recommendation", "status": "noted", "description": action_description}
                 
         except Exception as e:
             print(f"❌ Error executing action {action}: {e}")
