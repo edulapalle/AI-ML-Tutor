@@ -250,7 +250,19 @@ class AgenticLearningSystem:
                 ]
             )
             
-            synthesis = json.loads(response.choices[0].message.content)
+            response_content = response.choices[0].message.content.strip()
+            print(f"🤖 Synthesis OpenAI response (first 200 chars): {response_content[:200]}")
+            
+            if not response_content:
+                print("❌ Empty response from OpenAI for synthesis")
+                synthesis = {"priority_actions": [], "key_insights": [], "next_steps": [], "risk_factors": [], "strengths": []}
+            else:
+                try:
+                    synthesis = json.loads(response_content)
+                except json.JSONDecodeError as je:
+                    print(f"❌ JSON decode error in synthesis: {je}")
+                    print(f"❌ Raw response: {response_content}")
+                    synthesis = {"priority_actions": [], "key_insights": [], "next_steps": [], "risk_factors": [], "strengths": []}
             
             # Execute autonomous actions
             actions_taken = []
@@ -426,7 +438,19 @@ class LearningPathAgent:
                 ]
             )
             
-            recommendations_data = json.loads(response.choices[0].message.content)
+            response_content = response.choices[0].message.content.strip()
+            print(f"🛤️ Path recommendations OpenAI response (first 200 chars): {response_content[:200]}")
+            
+            if not response_content:
+                print("❌ Empty response from OpenAI for path recommendations")
+                recommendations_data = []
+            else:
+                try:
+                    recommendations_data = json.loads(response_content)
+                except json.JSONDecodeError as je:
+                    print(f"❌ JSON decode error in path recommendations: {je}")
+                    print(f"❌ Raw response: {response_content}")
+                    recommendations_data = []
             
             # Convert to LearningPathRecommendation objects
             recommendations = []
@@ -641,7 +665,19 @@ class ComprehensionMonitor:
                 ]
             )
             
-            insights_data = json.loads(response.choices[0].message.content)
+            response_content = response.choices[0].message.content.strip()
+            print(f"🧠 Comprehension insights OpenAI response (first 200 chars): {response_content[:200]}")
+            
+            if not response_content:
+                print("❌ Empty response from OpenAI for comprehension insights")
+                insights_data = []
+            else:
+                try:
+                    insights_data = json.loads(response_content)
+                except json.JSONDecodeError as je:
+                    print(f"❌ JSON decode error in comprehension insights: {je}")
+                    print(f"❌ Raw response: {response_content}")
+                    insights_data = []
             
             insights = []
             for insight_data in insights_data:
@@ -746,7 +782,19 @@ class GoalAchievementAssistant:
                 ]
             )
             
-            return json.loads(response.choices[0].message.content)
+            response_content = response.choices[0].message.content.strip()
+            print(f"🎯 Goal interventions OpenAI response (first 200 chars): {response_content[:200]}")
+            
+            if not response_content:
+                print("❌ Empty response from OpenAI for goal interventions")
+                return []
+            else:
+                try:
+                    return json.loads(response_content)
+                except json.JSONDecodeError as je:
+                    print(f"❌ JSON decode error in goal interventions: {je}")
+                    print(f"❌ Raw response: {response_content}")
+                    return []
             
         except Exception as e:
             print(f"❌ Error generating goal interventions: {e}")
@@ -887,7 +935,19 @@ class ContentCurationAgent:
                 ]
             )
             
-            return json.loads(response.choices[0].message.content)
+            response_content = response.choices[0].message.content.strip()
+            print(f"📚 Content recommendations OpenAI response (first 200 chars): {response_content[:200]}")
+            
+            if not response_content:
+                print("❌ Empty response from OpenAI for content recommendations")
+                return []
+            else:
+                try:
+                    return json.loads(response_content)
+                except json.JSONDecodeError as je:
+                    print(f"❌ JSON decode error in content recommendations: {je}")
+                    print(f"❌ Raw response: {response_content}")
+                    return []
             
         except Exception as e:
             print(f"❌ Error generating content recommendations: {e}")
