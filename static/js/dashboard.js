@@ -225,14 +225,28 @@ class Dashboard {
                 citations_sample: data.citations?.[0] || null,
                 next_concepts_sample: data.next_concepts || null
             });
+            
+            console.log('🧪 About to call addMessageToChat with metadata:', {
+                citations: data.citations,
+                next_concepts: data.next_concepts
+            });
 
             // Add assistant response
-            this.addMessageToChat('assistant', data.answer, {
-                citations: data.citations,
-                next_concepts: data.next_concepts,
-                intent: data.intent,
-                latency: data.latency_ms
-            });
+            try {
+                console.log('🎯 Calling addMessageToChat...');
+                this.addMessageToChat('assistant', data.answer, {
+                    citations: data.citations,
+                    next_concepts: data.next_concepts,
+                    intent: data.intent,
+                    latency: data.latency_ms
+                });
+                console.log('✅ addMessageToChat completed successfully');
+            } catch (error) {
+                console.error('❌ ERROR in addMessageToChat:', error);
+                console.error('Stack trace:', error.stack);
+                // Still add message without metadata as fallback
+                this.addMessageToChat('assistant', data.answer);
+            }
 
             // Update conversation history
             this.conversationHistory.push(
@@ -278,8 +292,13 @@ class Dashboard {
         // Add citations if present
         if (metadata.citations && metadata.citations.length > 0) {
             console.log('✅ ADDING CITATIONS TO MESSAGE:', metadata.citations.length);
-            const citationsDiv = this.createCitationsElement(metadata.citations);
-            messageContent.appendChild(citationsDiv);
+            try {
+                const citationsDiv = this.createCitationsElement(metadata.citations);
+                messageContent.appendChild(citationsDiv);
+                console.log('✅ Citations DOM elements added successfully');
+            } catch (error) {
+                console.error('❌ ERROR creating citations:', error);
+            }
         } else {
             console.log('❌ NO CITATIONS TO ADD');
         }
@@ -287,8 +306,13 @@ class Dashboard {
         // Add next concepts if present
         if (metadata.next_concepts && metadata.next_concepts.length > 0) {
             console.log('✅ ADDING NEXT CONCEPTS TO MESSAGE:', metadata.next_concepts.length);
-            const conceptsDiv = this.createNextConceptsElement(metadata.next_concepts);
-            messageContent.appendChild(conceptsDiv);
+            try {
+                const conceptsDiv = this.createNextConceptsElement(metadata.next_concepts);
+                messageContent.appendChild(conceptsDiv);
+                console.log('✅ Next concepts DOM elements added successfully');
+            } catch (error) {
+                console.error('❌ ERROR creating next concepts:', error);
+            }
         } else {
             console.log('❌ NO NEXT CONCEPTS TO ADD');
         }
