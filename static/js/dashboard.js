@@ -217,6 +217,15 @@ class Dashboard {
 
             const data = await response.json();
             
+            // Debug: Check what we received from backend
+            console.log('🔍 BACKEND RESPONSE:', {
+                answer_length: data.answer?.length || 0,
+                citations_count: data.citations?.length || 0,
+                next_concepts_count: data.next_concepts?.length || 0,
+                citations_sample: data.citations?.[0] || null,
+                next_concepts_sample: data.next_concepts || null
+            });
+
             // Add assistant response
             this.addMessageToChat('assistant', data.answer, {
                 citations: data.citations,
@@ -257,16 +266,31 @@ class Dashboard {
         messageContent.className = 'message-content';
         messageContent.innerHTML = this.formatMessage(content);
 
+        // Debug: Check metadata being passed to addMessageToChat
+        console.log('🎯 ADD_MESSAGE_TO_CHAT METADATA:', {
+            has_citations: !!(metadata.citations && metadata.citations.length > 0),
+            citations_count: metadata.citations?.length || 0,
+            has_next_concepts: !!(metadata.next_concepts && metadata.next_concepts.length > 0),
+            next_concepts_count: metadata.next_concepts?.length || 0,
+            full_metadata: metadata
+        });
+
         // Add citations if present
         if (metadata.citations && metadata.citations.length > 0) {
+            console.log('✅ ADDING CITATIONS TO MESSAGE:', metadata.citations.length);
             const citationsDiv = this.createCitationsElement(metadata.citations);
             messageContent.appendChild(citationsDiv);
+        } else {
+            console.log('❌ NO CITATIONS TO ADD');
         }
 
         // Add next concepts if present
         if (metadata.next_concepts && metadata.next_concepts.length > 0) {
+            console.log('✅ ADDING NEXT CONCEPTS TO MESSAGE:', metadata.next_concepts.length);
             const conceptsDiv = this.createNextConceptsElement(metadata.next_concepts);
             messageContent.appendChild(conceptsDiv);
+        } else {
+            console.log('❌ NO NEXT CONCEPTS TO ADD');
         }
 
         // Add message actions for assistant messages
