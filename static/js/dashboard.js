@@ -1262,7 +1262,8 @@ class Dashboard {
 
     async checkSystemHealth() {
         try {
-            const response = await fetch('/api/health');
+            // Use the new service-status endpoint for actual connectivity testing
+            const response = await fetch('/api/service-status');
             const health = await response.json();
 
             // Store health status for modal updates
