@@ -55,6 +55,18 @@ class ComprehensionSignal:
 class AgenticLearningSystem:
     """Main agentic learning system orchestrator"""
     
+    def _serialize_dataclass(self, obj):
+        """Convert dataclass to dict with proper datetime handling"""
+        if hasattr(obj, '__dataclass_fields__'):
+            result = {}
+            for field, value in asdict(obj).items():
+                if isinstance(value, datetime):
+                    result[field] = value.isoformat()
+                else:
+                    result[field] = value
+            return result
+        return obj
+    
     def _extract_json_from_response(self, response_content: str, context_name: str = "unknown"):
         """Helper method to extract JSON from OpenAI responses, handling markdown wrapping"""
         if not response_content:
@@ -133,8 +145,8 @@ class AgenticLearningSystem:
         return {
             "user_id": user_id,
             "analysis_timestamp": datetime.now().isoformat(),
-            "learning_path_recommendations": [asdict(r) for r in path_recommendations],
-            "comprehension_insights": [asdict(i) for i in comprehension_insights],
+            "learning_path_recommendations": [self._serialize_dataclass(r) for r in path_recommendations],
+            "comprehension_insights": [self._serialize_dataclass(i) for i in comprehension_insights],
             "goal_analysis": goal_analysis,
             "content_gaps": content_gaps,
             "synthesis": synthesis,
