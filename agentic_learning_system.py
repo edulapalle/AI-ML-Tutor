@@ -182,24 +182,14 @@ class AgenticLearningSystem:
             return []
     
     async def _get_user_chat_patterns(self, user_id: str) -> List[Dict]:
-        """Get user's chat history for pattern analysis"""
+        """Get user's chat history for pattern analysis using the dedicated function"""
         try:
-            async with httpx.AsyncClient() as client:
-                # Get recent chat history (last 50 messages)
-                response = await client.get(
-                    f"{self.supabase_url}/rest/v1/chat_history",
-                    headers={
-                        "apikey": self.supabase_key,
-                        "Authorization": f"Bearer {self.supabase_key}",
-                        "Content-Type": "application/json"
-                    },
-                    params={
-                        "user_id": f"eq.{user_id}", 
-                        "order": "message_timestamp.desc",
-                        "limit": "50"
-                    }
-                )
-                return response.json() if response.status_code == 200 else []
+            # Import the chat history function from app.py
+            # Using a relative import since we're in the same project
+            import app
+            chat_history = await app.get_user_chat_history(user_id, limit=50)
+            print(f"   💬 Retrieved {len(chat_history)} chat messages for pattern analysis")
+            return chat_history
         except Exception as e:
             print(f"❌ Error fetching chat patterns: {e}")
             return []

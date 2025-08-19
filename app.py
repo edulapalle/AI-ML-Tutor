@@ -781,6 +781,81 @@ async def get_user_progress_data(user_id: str) -> List[Dict]:
 #     """Get user's progress tracking data (for testing and debugging)"""
 #     pass
 
+# =============================================================================
+# CHAT HISTORY FUNCTIONS
+# =============================================================================
+
+async def store_chat_message(user_id: str, message_content: str, message_role: str, topics_mentioned: List[str] = None, response_quality: int = None):
+    """Store a chat message in the chat_history table"""
+    try:
+        if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+            print(f"   ❌ Supabase config missing for chat history")
+            return None
+            
+        async with httpx.AsyncClient(timeout=10) as client:
+            url = f"{SUPABASE_URL}/rest/v1/chat_history"
+            headers = supabase_headers()
+            
+            # Prepare the data - session_id is optional (NULL)
+            data = {
+                "user_id": user_id,
+                "session_id": None,  # We'll implement sessions later if needed
+                "message_content": message_content,
+                "message_role": message_role,  # 'user' or 'assistant'
+                "topics_mentioned": topics_mentioned or [],
+                "response_quality": response_quality
+            }
+            
+            response = await client.post(url, headers=headers, json=data)
+            if response.status_code == 201:
+                print(f"   💬 Stored {message_role} message in chat history")
+                try:
+                    return response.json()
+                except:
+                    return {"status": "stored"}  # Fallback if response parsing fails
+            elif response.status_code == 404:
+                print(f"   📝 Chat history table doesn't exist - this is normal for new setups")
+                return None
+            else:
+                print(f"   ❌ Failed to store chat message: {response.status_code} - {response.text}")
+                return None
+    except Exception as e:
+        print(f"   ❌ Error storing chat message: {e}")
+        return None
+
+
+async def get_user_chat_history(user_id: str, limit: int = 20) -> List[Dict]:
+    """Get user's recent chat history for agentic analysis"""
+    try:
+        if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+            print(f"   ❌ Supabase config missing for chat history retrieval")
+            return []
+            
+        async with httpx.AsyncClient(timeout=10) as client:
+            url = f"{SUPABASE_URL}/rest/v1/chat_history"
+            headers = supabase_headers()
+            params = {
+                "user_id": f"eq.{user_id}",
+                "select": "message_content,message_role,message_timestamp,topics_mentioned,response_quality",
+                "order": "message_timestamp.desc",
+                "limit": str(limit)
+            }
+            
+            response = await client.get(url, headers=headers, params=params)
+            if response.status_code == 200:
+                chat_data = response.json()
+                print(f"   💬 Retrieved {len(chat_data)} chat messages from history")
+                return chat_data
+            elif response.status_code == 404:
+                print(f"   📝 Chat history table doesn't exist - returning empty data")
+                return []
+            else:
+                print(f"   ❌ Failed to fetch chat history: {response.status_code} - {response.text}")
+                return []
+    except Exception as e:
+        print(f"   ❌ Error fetching chat history: {e}")
+        return []
+
 def generate_next_concepts_from_path(user_topics: List[str], current_topic: str = None) -> List[str]:
     """Generate next learning concepts based on user's learning path"""
     
@@ -1443,6 +1518,14 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
         total_latency = int((time.time() - t0) * 1000)
         print(f"   ❌ GUARDRAIL: Query blocked - {reason} (latency: {latency}ms)")
         
+        # Store blocked conversation in chat history
+        if current_user:
+            try:
+                await store_chat_message(current_user.id, request.message, "user")
+                await store_chat_message(current_user.id, reason, "assistant", response_quality=1)
+            except Exception as e:
+                print(f"   ⚠️ Chat history storage failed: {e}")
+        
         # Return a friendly chat response instead of HTTP error
         return ChatResponse(
             answer=reason,
@@ -1465,6 +1548,14 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
         total_latency = int((time.time() - t0) * 1000)
         
         print(f"   ✅ FALLBACK: Generated {len(fallback_answer)} character response (total latency: {total_latency}ms)")
+        
+        # Store fallback conversation in chat history
+        if current_user:
+            try:
+                await store_chat_message(current_user.id, request.message, "user")
+                await store_chat_message(current_user.id, fallback_answer, "assistant", response_quality=2)
+            except Exception as e:
+                print(f"   ⚠️ Chat history storage failed: {e}")
         
         return ChatResponse(
             answer=fallback_answer,
@@ -1494,8 +1585,18 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
             "quiz": f"I'd like to create a quiz for you, but my knowledge base is currently unavailable. Please check back in a few minutes."
         }
         
+        error_response = fallback_answers.get(intent, "I'm currently unable to access my knowledge base. Please try again in a moment.")
+        
+        # Store error conversation in chat history  
+        if current_user:
+            try:
+                await store_chat_message(current_user.id, request.message, "user")
+                await store_chat_message(current_user.id, error_response, "assistant", response_quality=1)
+            except Exception as e:
+                print(f"   ⚠️ Chat history storage failed: {e}")
+        
         return ChatResponse(
-            answer=fallback_answers.get(intent, "I'm currently unable to access my knowledge base. Please try again in a moment."),
+            answer=error_response,
             citations=[],
             next_concepts=[],
             intent=intent,
@@ -1687,6 +1788,30 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
             
         except Exception as e:
             print(f"⚠️ Failed to start agentic analysis: {e}")
+    
+    # 💬 CHAT HISTORY: Store the conversation
+    if current_user:
+        try:
+            # Store user's message
+            await store_chat_message(
+                user_id=current_user.id,
+                message_content=request.message,
+                message_role="user",
+                topics_mentioned=[extracted_topic] if extracted_topic else []
+            )
+            
+            # Store assistant's response
+            await store_chat_message(
+                user_id=current_user.id,
+                message_content=answer,
+                message_role="assistant",
+                topics_mentioned=[extracted_topic] if extracted_topic else [],
+                response_quality=5 if citations else 3  # Higher quality if we have citations
+            )
+            
+            print(f"   💬 Stored conversation pair in chat history")
+        except Exception as e:
+            print(f"   ⚠️ Chat history storage failed (continuing anyway): {e}")
     
     return ChatResponse(
         answer=answer,
