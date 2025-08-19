@@ -683,7 +683,7 @@ async def update_user_progress(user_id: str, topic: str, time_spent_minutes: int
                     new_proficiency = min(5.0, current_proficiency + proficiency_boost)
                     
                     update_data = {
-                        "proficiency_level": round(new_proficiency, 1),
+                        "proficiency_level": int(round(new_proficiency)),
                         "time_spent_minutes": current_time + time_spent_minutes,
                         "last_studied": datetime.now().isoformat(),
                         "updated_at": datetime.now().isoformat()
@@ -711,7 +711,7 @@ async def update_user_progress(user_id: str, topic: str, time_spent_minutes: int
                     progress_data = {
                         "user_id": user_id,
                         "topic": topic,
-                        "proficiency_level": round(initial_proficiency, 1),
+                        "proficiency_level": int(round(initial_proficiency)),
                         "time_spent_minutes": time_spent_minutes,
                         "last_studied": datetime.now().isoformat(),
                         "created_at": datetime.now().isoformat(),
@@ -773,11 +773,46 @@ async def get_user_progress_data(user_id: str) -> List[Dict]:
 # PROGRESS TRACKING API ENDPOINTS
 # =============================================================================
 
-# TEMPORARILY DISABLED FOR DEPLOYMENT DEBUGGING
-# @app.get("/api/progress/{user_id}")
-# async def get_user_progress_endpoint(user_id: str, current_user: UserProfile = Depends(get_current_user)):
-#     """Get user's progress tracking data (for testing and debugging)"""
-#     pass
+@app.get("/api/progress/{user_id}")
+async def get_user_progress_endpoint(user_id: str, current_user: UserProfile = Depends(get_current_user)):
+    """Get user's progress tracking data (for testing and debugging)"""
+    
+    # Security check: only allow users to view their own progress (or admin access later)
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Can only view your own progress data")
+    
+    try:
+        progress_data = await get_user_progress_data(user_id)
+        
+        # Calculate summary statistics
+        if progress_data:
+            total_topics = len(progress_data)
+            avg_proficiency = sum(p.get('proficiency_level', 1) for p in progress_data) / total_topics
+            total_time = sum(p.get('time_spent_minutes', 0) for p in progress_data)
+            
+            summary = {
+                "total_topics_studied": total_topics,
+                "average_proficiency": round(avg_proficiency, 2),
+                "total_time_minutes": total_time,
+                "total_time_hours": round(total_time / 60, 1)
+            }
+        else:
+            summary = {
+                "total_topics_studied": 0,
+                "average_proficiency": 0,
+                "total_time_minutes": 0,
+                "total_time_hours": 0
+            }
+        
+        return {
+            "user_id": user_id,
+            "summary": summary,
+            "progress_details": progress_data
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in progress endpoint: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve progress data")
 
 def generate_next_concepts_from_path(user_topics: List[str], current_topic: str = None) -> List[str]:
     """Generate next learning concepts based on user's learning path"""
