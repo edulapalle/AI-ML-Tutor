@@ -879,6 +879,64 @@ async def get_conversation_context(user_id: str, limit: int = 6) -> List[Dict]:
         print(f"   ⚠️ Failed to get conversation context: {e}")
         return []
 
+async def get_session_continuity_info(user_id: str) -> Dict[str, Any]:
+    """Get information about user's last conversation for session continuity"""
+    try:
+        # Get the last few messages to understand context
+        recent_chat = await get_user_chat_history(user_id, limit=4)
+        
+        if not recent_chat:
+            return {"has_previous": False}
+        
+        # Get the last assistant message to understand what we were discussing
+        last_assistant_message = None
+        last_user_message = None
+        
+        for msg in recent_chat:
+            if msg.get('message_role') == 'assistant' and not last_assistant_message:
+                last_assistant_message = msg
+            elif msg.get('message_role') == 'user' and not last_user_message:
+                last_user_message = msg
+            
+            if last_assistant_message and last_user_message:
+                break
+        
+        if not last_assistant_message or not last_user_message:
+            return {"has_previous": False}
+        
+        # Extract topic and context from the conversation
+        last_content = last_assistant_message.get('message_content', '')
+        last_user_query = last_user_message.get('message_content', '')
+        last_timestamp = last_assistant_message.get('message_timestamp', '')
+        
+        # Try to extract the main topic being discussed
+        topics_mentioned = last_assistant_message.get('topics_mentioned', [])
+        main_topic = topics_mentioned[0] if topics_mentioned else "our previous discussion"
+        
+        # Determine conversation type
+        conversation_type = "lesson"
+        if any(indicator in last_content.lower() for indicator in ["quiz", "question", "a)", "b)", "c)", "d)"]):
+            conversation_type = "quiz"
+        elif any(indicator in last_user_query.lower() for indicator in ["explain", "what is", "how does", "tell me about"]):
+            conversation_type = "explanation"
+        
+        # Create a brief summary
+        summary = last_content[:150] + "..." if len(last_content) > 150 else last_content
+        
+        return {
+            "has_previous": True,
+            "main_topic": main_topic,
+            "conversation_type": conversation_type,
+            "last_user_query": last_user_query,
+            "summary": summary,
+            "timestamp": last_timestamp,
+            "message_count": len(recent_chat)
+        }
+        
+    except Exception as e:
+        print(f"   ⚠️ Error getting session continuity info: {e}")
+        return {"has_previous": False}
+
 def generate_next_concepts_from_path(user_topics: List[str], current_topic: str = None) -> List[str]:
     """Generate next learning concepts based on user's learning path"""
     
@@ -1614,7 +1672,13 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
     # 1) Get conversation context for guardrails and follow-up capabilities  
     conversation_context = []
     if current_user:
-        conversation_context = await get_conversation_context(current_user.id, limit=6)
+        # Check if user wants to continue session or start fresh
+        continue_session = request.headers.get('X-Continue-Session', 'true').lower() == 'true'
+        if continue_session:
+            conversation_context = await get_conversation_context(current_user.id, limit=6)
+        else:
+            print(f"   🔄 User chose to start fresh session - skipping conversation context")
+            conversation_context = []
     
     # 2) Advanced Guardrails with conversation context (keeping existing guardrails as backup)
     from run_gaurdrails import run_guardrails
@@ -2451,6 +2515,16 @@ async def health_check():
     
     # Absolute minimal response - no imports, no processing, no external calls
     return {"status": "healthy"}
+
+@app.get("/api/session-continuity")
+async def get_session_continuity(current_user: UserProfile = Depends(get_current_user)):
+    """Get session continuity information for user's dashboard"""
+    try:
+        continuity_info = await get_session_continuity_info(current_user.id)
+        return continuity_info
+    except Exception as e:
+        print(f"❌ Error getting session continuity: {e}")
+        return {"has_previous": False, "error": str(e)}
 
 @app.get("/ping")
 async def ping():

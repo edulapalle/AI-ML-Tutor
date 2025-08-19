@@ -41,6 +41,9 @@ class Dashboard {
             // Initialize agentic features
             await this.initAgenticFeatures();
             
+            // Check for session continuity
+            await this.checkSessionContinuity();
+            
             console.log('Dashboard initialized successfully');
         } catch (error) {
             console.error('Dashboard initialization failed:', error);
@@ -194,11 +197,17 @@ class Dashboard {
             this.showTypingIndicator();
 
             const token = this.getAuthToken();
+            
+            // Check session preference
+            const continueSession = sessionStorage.getItem('continueSession');
+            const sessionHeader = continueSession === 'false' ? 'false' : 'true';
+            
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'X-Continue-Session': sessionHeader
                 },
                 body: JSON.stringify({
                     message: message,
@@ -2076,11 +2085,16 @@ class Dashboard {
             this.showTeddyBearIndicator();
 
             // Send message to API
+            // Check session preference
+            const continueSession = sessionStorage.getItem('continueSession');
+            const sessionHeader = continueSession === 'false' ? 'false' : 'true';
+            
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.getAuthToken()}`
+                    'Authorization': `Bearer ${this.getAuthToken()}`,
+                    'X-Continue-Session': sessionHeader
                 },
                 body: JSON.stringify({
                     message: message,
@@ -2171,6 +2185,99 @@ class Dashboard {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // Session Continuity Methods
+    async checkSessionContinuity() {
+        try {
+            const response = await fetch('/api/session-continuity');
+            if (response.ok) {
+                const continuityInfo = await response.json();
+                
+                if (continuityInfo.has_previous) {
+                    this.showSessionContinuityModal(continuityInfo);
+                }
+            }
+        } catch (error) {
+            console.log('Session continuity check failed (non-critical):', error);
+        }
+    }
+
+    showSessionContinuityModal(sessionInfo) {
+        const modal = document.getElementById('sessionContinuityModal');
+        const summaryDiv = document.getElementById('sessionSummary');
+        const continueBtn = document.getElementById('continueSessionBtn');
+        const newBtn = document.getElementById('newSessionBtn');
+        
+        // Format timestamp
+        const timestamp = new Date(sessionInfo.timestamp).toLocaleString();
+        
+        // Build summary HTML
+        summaryDiv.innerHTML = `
+            <div class="session-topic">
+                📚 Previous Topic: ${sessionInfo.main_topic}
+            </div>
+            <div class="session-type">
+                ${sessionInfo.conversation_type === 'quiz' ? '🎯 Quiz Session' : 
+                  sessionInfo.conversation_type === 'explanation' ? '💡 Learning Session' : '📖 Discussion'}
+            </div>
+            <div class="session-context">
+                ${sessionInfo.summary}
+            </div>
+            <div class="session-timestamp">
+                Last activity: ${timestamp}
+            </div>
+        `;
+        
+        // Set up event listeners
+        continueBtn.onclick = () => this.continueSession(sessionInfo);
+        newBtn.onclick = () => this.startNewSession();
+        
+        // Show modal
+        modal.style.display = 'flex';
+    }
+
+    continueSession(sessionInfo) {
+        // Store session preference
+        sessionStorage.setItem('continueSession', 'true');
+        sessionStorage.setItem('sessionInfo', JSON.stringify(sessionInfo));
+        
+        // Close modal
+        document.getElementById('sessionContinuityModal').style.display = 'none';
+        
+        // Add a welcome back message to chat
+        this.addWelcomeBackMessage(sessionInfo);
+        
+        console.log('Continuing previous session:', sessionInfo.main_topic);
+    }
+
+    startNewSession() {
+        // Store session preference
+        sessionStorage.setItem('continueSession', 'false');
+        sessionStorage.removeItem('sessionInfo');
+        
+        // Close modal
+        document.getElementById('sessionContinuityModal').style.display = 'none';
+        
+        // Clear any previous context (this will be handled by the backend)
+        console.log('Starting fresh session');
+    }
+
+    addWelcomeBackMessage(sessionInfo) {
+        const chatMessages = document.getElementById('chatMessages');
+        
+        // Create welcome back message
+        const welcomeDiv = document.createElement('div');
+        welcomeDiv.className = 'message assistant welcome-back';
+        welcomeDiv.innerHTML = `
+            <div class="message-content">
+                🎉 <strong>Welcome back!</strong> I see we were discussing <strong>${sessionInfo.main_topic}</strong>. 
+                Feel free to continue with follow-up questions or ask me something new!
+            </div>
+        `;
+        
+        chatMessages.appendChild(welcomeDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 }
 

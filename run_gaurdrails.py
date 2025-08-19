@@ -77,23 +77,7 @@ def is_in_educational_context(text: str, conversation_history: Optional[list] = 
     if not conversation_history:
         return False
     
-    # Look at recent assistant messages for educational context
-    recent_messages = conversation_history[-3:] if len(conversation_history) >= 3 else conversation_history
-    
-    for msg in recent_messages:
-        if msg.get("role") == "assistant":
-            content = msg.get("content", "").lower()
-            # Check if assistant recently asked educational questions or gave quizzes
-            if any(keyword in content for keyword in [
-                "quiz", "question", "which", "what is", "choose", "select", 
-                "true or false", "correct answer", "explain", "define",
-                "example", "compare", "learning", "study", "understand",
-                "neural network", "machine learning", "algorithm", "model",
-                "data", "training", "prediction", "classification"
-            ]):
-                return True
-    
-    # Check if current message looks like an educational response
+    # First, check if current message looks like a quiz answer (most important check)
     t = text.lower().strip()
     
     # Common quiz answer patterns
@@ -114,17 +98,37 @@ def is_in_educational_context(text: str, conversation_history: Optional[list] = 
     ]
     
     import re
+    
+    # Only check for quiz patterns if the current text looks like an answer
     for pattern in quiz_patterns:
         if re.match(pattern, t):
-            return True
+            # Also check if there's recent quiz context to confirm
+            recent_messages = conversation_history[-2:] if len(conversation_history) >= 2 else conversation_history
+            for msg in recent_messages:
+                if msg.get("role") == "assistant":
+                    content = msg.get("content", "").lower()
+                    # Only trigger if there's EXPLICIT quiz content
+                    if any(quiz_word in content for quiz_word in [
+                        "quiz", "question 1", "question 2", "question 3", "question 4",
+                        "a)", "b)", "c)", "d)", "choose the correct", "select the", 
+                        "which of the following", "true or false"
+                    ]):
+                        return True
+            return False  # Pattern matched but no quiz context
     
-    # Check for short answers that might be technical terms
-    if len(t.split()) <= 3 and any(keyword in t for keyword in [
-        "network", "learning", "model", "algorithm", "data", "training",
-        "prediction", "feature", "layer", "activation", "gradient", "loss",
-        "accuracy", "precision", "recall", "overfitting", "underfitting"
+    # Check for very short technical answers (1-2 words) with explicit quiz context
+    if len(t.split()) <= 2 and any(keyword in t for keyword in [
+        "cnn", "rnn", "lstm", "bert", "gpt", "yes", "no", "true", "false"
     ]):
-        return True
+        # Check for recent explicit quiz context
+        recent_messages = conversation_history[-2:] if len(conversation_history) >= 2 else conversation_history
+        for msg in recent_messages:
+            if msg.get("role") == "assistant":
+                content = msg.get("content", "").lower()
+                if any(quiz_word in content for quiz_word in [
+                    "quiz", "question", "a)", "b)", "c)", "d)", "true or false"
+                ]):
+                    return True
     
     return False
 
