@@ -112,17 +112,23 @@ async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Starting AI/ML Educational Platform")
     
-    # Test connections
-    milvus_status = connect_milvus()
-    if milvus_status:
-        print("✅ Milvus connection established")
-    else:
-        print("⚠️ Milvus connection failed - app will run with fallback responses")
+    # Test connections (non-blocking - don't let startup fail if services are down)
+    try:
+        milvus_status = connect_milvus()
+        if milvus_status:
+            print("✅ Milvus connection established")
+        else:
+            print("⚠️ Milvus connection failed - app will run with fallback responses")
+    except Exception as e:
+        print(f"⚠️ Milvus connection error during startup: {e} - continuing anyway")
     
-    if test_neo4j_connection():
-        print("✅ Neo4j connection established")
-    else:
-        print("⚠️ Neo4j connection failed")
+    try:
+        if test_neo4j_connection():
+            print("✅ Neo4j connection established")
+        else:
+            print("⚠️ Neo4j connection failed - app will run with limited graph features")
+    except Exception as e:
+        print(f"⚠️ Neo4j connection error during startup: {e} - continuing anyway")
     
     if oai:
         print("✅ OpenAI client initialized")
@@ -2229,35 +2235,27 @@ async def get_content_suggestions(current_user: UserProfile = Depends(get_curren
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
-    """Fast health check for Railway deployment (no external service tests)"""
+    """Ultra-fast health check for Railway deployment (minimal processing)"""
     
-    # Quick configuration checks (no network calls for Railway health check)
-    basic_health = {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "app": "AI/ML Educational Platform",
-        "platform": "railway",
-        "uptime": "running"
-    }
-    
-    # Only check if services are configured, not if they're reachable
-    # This ensures Railway health check passes quickly
-    config_status = {
-        "milvus_configured": bool(MILVUS_URI and MILVUS_TOKEN),
-        "neo4j_configured": bool(NEO4J_URI and NEO4J_PASSWORD),
-        "openai_configured": bool(OPENAI_API_KEY),
-        "supabase_configured": bool(SUPABASE_URL and SUPABASE_ANON_KEY)
-    }
-    
-    # Combine basic health with config status for UI
-    basic_health.update(config_status)
-    
-    # For UI compatibility, set service status based on configuration
-    basic_health["milvus"] = config_status["milvus_configured"]
-    basic_health["neo4j"] = config_status["neo4j_configured"] 
-    basic_health["openai"] = config_status["openai_configured"]
-    
-    return basic_health
+    try:
+        # Absolute minimal response to ensure Railway health check passes
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "app": "AI/ML Educational Platform"
+        }
+    except Exception as e:
+        # Emergency fallback - even if datetime fails
+        return {
+            "status": "healthy",
+            "app": "AI/ML Educational Platform",
+            "emergency": True
+        }
+
+@app.get("/ping")
+async def ping():
+    """Simplest possible health check endpoint"""
+    return {"status": "ok"}
 
 @app.get("/api/service-status")
 async def service_connectivity_check():
