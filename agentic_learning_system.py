@@ -67,6 +67,19 @@ class AgenticLearningSystem:
             return result
         return obj
     
+    def _serialize_response(self, obj):
+        """Recursively serialize any object, handling datetime objects"""
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        elif isinstance(obj, dict):
+            return {key: self._serialize_response(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._serialize_response(item) for item in obj]
+        elif hasattr(obj, '__dataclass_fields__'):
+            return self._serialize_dataclass(obj)
+        else:
+            return obj
+    
     def _extract_json_from_response(self, response_content: str, context_name: str = "unknown"):
         """Helper method to extract JSON from OpenAI responses, handling markdown wrapping"""
         if not response_content:
@@ -142,7 +155,7 @@ class AgenticLearningSystem:
             user_id, path_recommendations, comprehension_insights, goal_analysis, content_gaps
         )
         
-        return {
+        response_data = {
             "user_id": user_id,
             "analysis_timestamp": datetime.now().isoformat(),
             "learning_path_recommendations": [self._serialize_dataclass(r) for r in path_recommendations],
@@ -152,6 +165,9 @@ class AgenticLearningSystem:
             "synthesis": synthesis,
             "autonomous_actions_taken": synthesis.get("actions_taken", [])
         }
+        
+        # Recursively serialize the entire response to catch any missed datetime objects
+        return self._serialize_response(response_data)
     
     async def _get_user_learning_history(self, user_id: str) -> List[Dict]:
         """Get user's learning history from Supabase"""
