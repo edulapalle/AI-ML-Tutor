@@ -1698,6 +1698,25 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
         use_moderation=True
     )
     
+    # Handle special greeting responses
+    if guardrail_result.get("reason") == "greeting" and guardrail_result.get("allowed", False):
+        greeting_response = guardrail_result.get("greeting_response", "Hello! How can I help you learn about AI/ML today?")
+        
+        # Store greeting exchange in chat history
+        if current_user:
+            try:
+                await store_chat_message(current_user.id, request.message, "user")
+                await store_chat_message(current_user.id, greeting_response, "assistant", response_quality=5)
+                print(f"   💬 Stored greeting exchange in chat history")
+            except Exception as e:
+                print(f"   ⚠️ Failed to store greeting in chat history: {e}")
+        
+        return ChatResponse(
+            answer=greeting_response,
+            citations=[],
+            next_concepts=["machine learning basics", "deep learning", "data science fundamentals"]
+        )
+    
     if guardrail_result["allowed"] == False:
         reason = guardrail_result["reason"]
         latency = guardrail_result.get("latency_ms", 0)
@@ -2527,7 +2546,9 @@ async def health_check():
 async def get_session_continuity(current_user: UserProfile = Depends(get_current_user)):
     """Get session continuity information for user's dashboard"""
     try:
+        print(f"   🔍 Session continuity check for user: {current_user.id}")
         continuity_info = await get_session_continuity_info(current_user.id)
+        print(f"   📋 Session continuity result: {continuity_info}")
         return continuity_info
     except Exception as e:
         print(f"❌ Error getting session continuity: {e}")

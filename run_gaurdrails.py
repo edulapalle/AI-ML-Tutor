@@ -321,7 +321,13 @@ async def run_guardrails(
     
     # 2. Handle greetings politely
     if is_greeting(q):
-        return guardrail_result(False, "Hello! 👋 I'm your AI/ML learning assistant. I can help you understand machine learning, deep learning, data science, and AI concepts. What would you like to learn about today?")
+        latency_ms = int((time.time() - t0) * 1000)
+        return {
+            "allowed": True, 
+            "reason": "greeting", 
+            "greeting_response": "Hello! 👋 I'm your AI/ML learning assistant. I can help you understand machine learning, deep learning, data science, and AI concepts. What would you like to learn about today?",
+            "latency_ms": latency_ms
+        }
     
     # 3. Allow conversation follow-ups
     if is_followup(q):

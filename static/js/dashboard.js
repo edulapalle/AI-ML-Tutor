@@ -2191,7 +2191,22 @@ class Dashboard {
     async checkSessionContinuity() {
         try {
             console.log('🔍 Checking for session continuity...');
-            const response = await fetch('/api/session-continuity');
+            
+            // Make sure we have authentication token
+            const token = this.getAuthToken();
+            if (!token) {
+                console.log('📭 No auth token, skipping session continuity check');
+                return;
+            }
+            
+            const response = await fetch('/api/session-continuity', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
             if (response.ok) {
                 const continuityInfo = await response.json();
                 console.log('📋 Session continuity response:', continuityInfo);
@@ -2202,6 +2217,8 @@ class Dashboard {
                 } else {
                     console.log('📭 No previous session found');
                 }
+            } else if (response.status === 403) {
+                console.log('⚠️ Session continuity: Authentication required');
             } else {
                 console.log('⚠️ Session continuity API error:', response.status);
             }

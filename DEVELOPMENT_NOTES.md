@@ -932,3 +932,24 @@ User requested complete removal of YouTube scraper and Neo4j integration to "bui
 - Test session continuity in production
 - Monitor greeting handling
 - Verify modal display and user choice functionality
+
+### URGENT FOLLOW-UP FIXES (Dec 19, 2024 - 10:05 PM):
+**Problems Identified in Production:**
+1. **Greeting Still Blocked**: "HI" was being blocked as `non_ml_topic` 
+2. **Session Continuity 403**: Authentication headers missing from session check
+
+**Critical Fixes Applied:**
+1. **Greeting Response Fixed**: Changed guardrails to return `allowed: True` with special `greeting_response` field instead of `allowed: False`
+2. **Chat Endpoint Enhanced**: Added special handling for greeting responses before blocked check
+3. **Session Auth Fixed**: Added proper Authorization headers to session continuity API call
+4. **Error Resilience**: Added token validation before making session continuity requests
+
+**Technical Changes:**
+- `run_gaurdrails.py`: Greeting check now returns `{allowed: True, reason: "greeting", greeting_response: "..."}`
+- `app.py`: Added greeting response handling in chat endpoint before blocked logic
+- `static/js/dashboard.js`: Added Authorization header to session continuity API call
+
+**Expected Results:**
+- "hi", "hello", "HI" should now work with friendly responses
+- Session continuity should work without 403 errors
+- Greeting conversations stored in chat history for continuity
