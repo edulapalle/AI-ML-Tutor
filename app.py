@@ -2041,15 +2041,34 @@ async def get_content_suggestions(current_user: UserProfile = Depends(get_curren
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
-    """Ultra-reliable Railway health check - always returns 200"""
+    """Health check with service status for UI"""
     
-    # Always return healthy - Railway just needs a 200 response
+    # Check service availability quickly
+    milvus_ok = False
+    neo4j_ok = False
+    openai_ok = bool(oai)  # OpenAI client initialized
+    
+    try:
+        # Quick Milvus check
+        milvus_ok = connect_milvus()
+    except:
+        milvus_ok = False
+    
+    try:
+        # Quick Neo4j check
+        neo4j_ok = test_neo4j_connection()
+    except:
+        neo4j_ok = False
+    
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "app": "AI/ML Educational Platform",
         "platform": "railway",
-        "uptime": "running"
+        "uptime": "running",
+        "milvus": milvus_ok,
+        "neo4j": neo4j_ok,
+        "openai": openai_ok
     }
 
 @app.get("/api/detailed-health") 

@@ -1216,9 +1216,10 @@ class Dashboard {
             // Store health status for modal updates
             this.lastHealthStatus = health;
 
-            this.updateStatusIndicator('milvusStatus', health.milvus);
-            this.updateStatusIndicator('neo4jStatus', health.neo4j);
-            this.updateStatusIndicator('openaiStatus', health.openai);
+            // Update modal status indicators directly since main page doesn't have status elements
+            this.updateModalStatusIndicator('modalMilvusStatus', health.milvus);
+            this.updateModalStatusIndicator('modalNeo4jStatus', health.neo4j);
+            this.updateModalStatusIndicator('modalOpenaiStatus', health.openai);
         } catch (error) {
             console.error('Health check error:', error);
             
@@ -1229,9 +1230,10 @@ class Dashboard {
                 openai: false
             };
 
-            this.updateStatusIndicator('milvusStatus', false);
-            this.updateStatusIndicator('neo4jStatus', false);
-            this.updateStatusIndicator('openaiStatus', false);
+            // Update modal status indicators for failed health check
+            this.updateModalStatusIndicator('modalMilvusStatus', false);
+            this.updateModalStatusIndicator('modalNeo4jStatus', false);
+            this.updateModalStatusIndicator('modalOpenaiStatus', false);
         }
         
         // Update profile modal status indicators if modal exists
@@ -1434,26 +1436,11 @@ class Dashboard {
             });
         }
 
-        // Update system status in modal (copy from main display)
-        const modalMilvusStatus = document.getElementById('modalMilvusStatus');
-        const modalNeo4jStatus = document.getElementById('modalNeo4jStatus');
-        const modalOpenaiStatus = document.getElementById('modalOpenaiStatus');
-        
-        const mainMilvusStatus = document.getElementById('milvusStatus');
-        const mainNeo4jStatus = document.getElementById('neo4jStatus');
-        const mainOpenaiStatus = document.getElementById('openaiStatus');
-
-        if (modalMilvusStatus && mainMilvusStatus) {
-            modalMilvusStatus.innerHTML = mainMilvusStatus.innerHTML;
-            modalMilvusStatus.className = mainMilvusStatus.className;
-        }
-        if (modalNeo4jStatus && mainNeo4jStatus) {
-            modalNeo4jStatus.innerHTML = mainNeo4jStatus.innerHTML;
-            modalNeo4jStatus.className = mainNeo4jStatus.className;
-        }
-        if (modalOpenaiStatus && mainOpenaiStatus) {
-            modalOpenaiStatus.innerHTML = mainOpenaiStatus.innerHTML;
-            modalOpenaiStatus.className = mainOpenaiStatus.className;
+        // Update system status in modal using stored health status
+        if (this.lastHealthStatus) {
+            this.updateModalStatusIndicator('modalMilvusStatus', this.lastHealthStatus.milvus);
+            this.updateModalStatusIndicator('modalNeo4jStatus', this.lastHealthStatus.neo4j);
+            this.updateModalStatusIndicator('modalOpenaiStatus', this.lastHealthStatus.openai);
         }
     }
 

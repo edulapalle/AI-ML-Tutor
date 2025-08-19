@@ -361,7 +361,7 @@ body {
 }
 
 .message.user .message-avatar {
-    background: #FFF4B3;
+    background: linear-gradient(45deg, #667eea, #764ba2);
     color: white;
 }
 
