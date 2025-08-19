@@ -885,7 +885,10 @@ async def get_session_continuity_info(user_id: str) -> Dict[str, Any]:
         # Get the last few messages to understand context
         recent_chat = await get_user_chat_history(user_id, limit=4)
         
+        print(f"   🔍 Session continuity check: Found {len(recent_chat)} recent messages for user {user_id}")
+        
         if not recent_chat:
+            print(f"   📭 No previous chat history found - no session to continue")
             return {"has_previous": False}
         
         # Get the last assistant message to understand what we were discussing
@@ -902,6 +905,7 @@ async def get_session_continuity_info(user_id: str) -> Dict[str, Any]:
                 break
         
         if not last_assistant_message or not last_user_message:
+            print(f"   📭 Incomplete conversation pair found - no session to continue")
             return {"has_previous": False}
         
         # Extract topic and context from the conversation
@@ -922,6 +926,8 @@ async def get_session_continuity_info(user_id: str) -> Dict[str, Any]:
         
         # Create a brief summary
         summary = last_content[:150] + "..." if len(last_content) > 150 else last_content
+        
+        print(f"   ✅ Previous session found: {main_topic} ({conversation_type})")
         
         return {
             "has_previous": True,
@@ -1673,9 +1679,10 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
     conversation_context = []
     if current_user:
         # Check if user wants to continue session or start fresh
-        continue_session = request.headers.get('X-Continue-Session', 'true').lower() == 'true'
+        continue_session = fastapi_request.headers.get('X-Continue-Session', 'true').lower() == 'true'
         if continue_session:
             conversation_context = await get_conversation_context(current_user.id, limit=6)
+            print(f"   🔄 Continuing session - loaded {len(conversation_context)} previous messages")
         else:
             print(f"   🔄 User chose to start fresh session - skipping conversation context")
             conversation_context = []

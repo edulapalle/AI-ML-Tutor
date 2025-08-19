@@ -2190,13 +2190,20 @@ class Dashboard {
     // Session Continuity Methods
     async checkSessionContinuity() {
         try {
+            console.log('🔍 Checking for session continuity...');
             const response = await fetch('/api/session-continuity');
             if (response.ok) {
                 const continuityInfo = await response.json();
+                console.log('📋 Session continuity response:', continuityInfo);
                 
                 if (continuityInfo.has_previous) {
+                    console.log('✅ Previous session found, showing modal');
                     this.showSessionContinuityModal(continuityInfo);
+                } else {
+                    console.log('📭 No previous session found');
                 }
+            } else {
+                console.log('⚠️ Session continuity API error:', response.status);
             }
         } catch (error) {
             console.log('Session continuity check failed (non-critical):', error);

@@ -80,6 +80,15 @@ def is_in_educational_context(text: str, conversation_history: Optional[list] = 
     # First, check if current message looks like a quiz answer (most important check)
     t = text.lower().strip()
     
+    # Allow basic greetings and social interactions
+    basic_greetings = [
+        "hi", "hello", "hey", "good morning", "good afternoon", "good evening",
+        "how are you", "thanks", "thank you", "bye", "goodbye", "see you"
+    ]
+    
+    if any(greeting in t for greeting in basic_greetings):
+        return True
+    
     # Common quiz answer patterns
     quiz_patterns = [
         # Multiple choice answers
