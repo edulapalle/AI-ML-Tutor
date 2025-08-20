@@ -8,6 +8,12 @@
 
 **GitHub**: https://github.com/edulapalle/AI-ML-Tutor 
 
+**Youtube Video**: https://youtu.be/tTHYWZSWqw4 
+
+**Medium Blog**: https://medium.com/@SantoshEdulapalle/building-an-ai-tutor-from-bootcamp-idea-to-production-ready-ml-education-platform-b3b3b6920811 
+
+---
+
 **Status**: 🚂 **Railway Production** | ✅ **Multi-Agent System** | 🎨 **Child-Friendly UI** | 🛡️ **Enterprise Security** | 🔄 **Session Continuity** | 💬 **Speech Bubbles**
 
 ---
