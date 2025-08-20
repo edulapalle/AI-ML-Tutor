@@ -967,3 +967,16 @@ User requested complete removal of YouTube scraper and Neo4j integration to "bui
 - Added debugging to `run_gaurdrails.py` to trace execution flow
 
 **Technical Lesson**: Always check for legacy/duplicate protection systems when debugging blocked requests
+
+### PYDANTIC VALIDATION FIX (Dec 19, 2024 - 10:45 PM):
+**Issue Found**: Greeting responses caused 500 Internal Server Error due to missing required fields in ChatResponse
+**Error**: `Field required [type=missing, input_value={'answer': "Hello! 👋 I... science fundamentals']}, input_type=dict]`
+
+**Root Cause**: ChatResponse model requires `intent` and `latency_ms` fields, but greeting response only provided `answer`, `citations`, and `next_concepts`
+
+**Fix Applied**:
+- Added missing `intent="explain"` (from valid Intent literals)
+- Added missing `latency_ms=int((time.time() - t0) * 1000)` 
+- Greeting responses now comply with ChatResponse schema
+
+**Technical Lesson**: Always ensure response objects match Pydantic model schemas exactly, including all required fields

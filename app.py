@@ -1757,7 +1757,9 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
         return ChatResponse(
             answer=greeting_response,
             citations=[],
-            next_concepts=["machine learning basics", "deep learning", "data science fundamentals"]
+            next_concepts=["machine learning basics", "deep learning", "data science fundamentals"],
+            intent="explain",
+            latency_ms=int((time.time() - t0) * 1000)
         )
     
     if guardrail_result["allowed"] == False:
