@@ -7,9 +7,9 @@ flowchart TD
     
     %% Security Layer
     B --> C[Multi-Layer Security<br/>Offline + Online Safety]
-    C --> QuizBlock{Quiz Answer<br/>Pattern?}
-    QuizBlock -->|A,B,C,D| QuizError[Quiz Protection Block<br/>Use dedicated quiz feature!]
-    QuizBlock -->|Educational| D[Rate Limiting Check<br/>10 requests/60 seconds]
+    C --> GuardCheck{Educational<br/>Content?}
+    GuardCheck -->|Non-Educational| GuardBlock[Educational Guardrails Block<br/>Let's focus on ML/AI learning!]
+    GuardCheck -->|Educational| D[Rate Limiting Check<br/>10 requests/60 seconds]
     
     %% RAG Pipeline Start
     D --> E[Intent Classification<br/>GPT-4o-mini Analysis]
@@ -18,7 +18,6 @@ flowchart TD
     E --> F{Intent Type?}
     F -->|explain/define| G[Definition Pipeline]
     F -->|compare/analyze| H[Comparison Pipeline]
-    F -->|quiz request| QuizGuidance[Quiz Guidance Response<br/>Use dedicated quiz endpoints!]
     F -->|general| J[General Learning Pipeline]
     
     %% Multi-Source Retrieval
@@ -60,10 +59,10 @@ flowchart TD
     %% Output
     Y --> Z[JSON Response<br/>answer, citations, next_concepts]
     
-    %% Error Handling & New Responses
+    %% Error Handling & Responses
     C -->|Blocked Content| AA[Safety Response<br/>Let's focus on learning!]
     D -->|Rate Limited| BB[Gentle Limit Message<br/>Take a break!]
-    QuizGuidance --> CC[User-Friendly Quiz Guide<br/>Interactive learning options available!]
+    GuardBlock --> CC[Educational Guidance<br/>Try asking about ML/AI topics!]
     
     %% Styling
     classDef input fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
@@ -83,5 +82,5 @@ flowchart TD
     class K,L,M,N,O retrieval
     class U,V,W,X enhancement
     class Y,Z output
-    class AA,BB,CC,QuizError error
-    class QuizBlock,QuizGuidance protection
+    class AA,BB,CC error
+    class GuardCheck,GuardBlock protection

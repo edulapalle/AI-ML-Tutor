@@ -3,15 +3,22 @@ graph TD
     A[Child-Friendly Frontend<br/>Speech Bubbles + Session Continuity<br/>HTML/CSS/JS with Teddy Bear Animations] --> B[FastAPI Application<br/>Authentication + Security + Health Checks]
     
     %% FastAPI Core Components
-    B --> C[RAG System + Quiz Protection]
+    B --> C[RAG System]
     B --> D[Enhanced Agentic Learning System]
     B --> SessionCont[Session Continuity System<br/>/api/session-continuity]
+    B --> Guard[Multi-Layer Guardrails<br/>Child Protection System]
     
     %% RAG System Components
     C --> E[Intent Classification<br/>explain/define/compare]
     C --> F[Multi-Source Retrieval<br/>Milvus + Neo4j Queries]
     C --> G[LLM Re-ranking<br/>GPT-4o-mini Judge]
-    C --> QuizGuard[Quiz Answer Protection<br/>Blocks A,B,C,D patterns]
+    
+    %% Guardrails & Protection System
+    Guard --> G1[Offline Safety Layer<br/>API-Independent Protection]
+    Guard --> G2[Content Filtering<br/>XSS + Profanity Detection]
+    Guard --> G3[Educational Guardrails<br/>ML-Topic Enforcement]
+    Guard --> G4[OpenAI Moderation<br/>Violence/Hate Detection]
+    Guard --> G5[Rate Limiting<br/>Abuse Prevention]
     
     %% Session Continuity Components
     SessionCont --> SC1[Smart Conversation Detection]
@@ -48,7 +55,10 @@ graph TD
     K --> N
     SessionCont --> O
     SC1 --> O
-    QuizGuard --> O
+    Guard --> P
+    G1 --> O
+    G3 --> P
+    G4 --> P
     
     %% Styling
     classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -57,7 +67,7 @@ graph TD
     classDef agents fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef external fill:#fce4ec,stroke:#880e4f,stroke-width:2px
     classDef session fill:#fff8e1,stroke:#ff8f00,stroke-width:2px
-    classDef protection fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef guardrails fill:#ffebee,stroke:#c62828,stroke-width:2px
     
     class A frontend
     class B backend
@@ -65,4 +75,4 @@ graph TD
     class D,H,I,J,K agents
     class L,M,N,O,P external
     class SessionCont,SC1,SC2,SC3 session
-    class QuizGuard protection
+    class Guard,G1,G2,G3,G4,G5 guardrails

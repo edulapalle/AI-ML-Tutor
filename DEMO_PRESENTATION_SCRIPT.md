@@ -50,7 +50,7 @@ curl -X POST http://localhost:8000/api/chat \
 - 🚫 **Content Filtering**: XSS prevention, profanity detection
 - 🤖 **AI Guardrails**: LLM classification + offline safety
 - 🔍 **OpenAI Moderation**: Violence/hate/self-harm detection
-- 🎯 **Quiz Protection**: Blocks obvious quiz answers (A, B, C, D)
+- 🛡️ **Multi-Layer Guardrails**: Child protection with abuse prevention
 
 **Technical Details to Highlight:**
 ```python
@@ -59,9 +59,9 @@ curl -X POST http://localhost:8000/api/chat \
 async def chat_endpoint(request: ChatRequest, user=Depends(get_current_user)):
     # Multi-layer protection
     await run_comprehensive_safety_checks(request.message)
-    # Quiz answer blocking guard
-    if is_quiz_answer_pattern(request.message):
-        raise HTTPException(status_code=422, detail="Use dedicated quiz feature")
+    # Educational guardrails
+    if not await is_educational_content(request.message):
+        raise HTTPException(status_code=422, detail="Let's focus on learning!")
 ```
 
 ### **4. Advanced RAG System**
@@ -208,23 +208,26 @@ def get_session_continuity_info(user_id):
     # Provide conversation context and follow-up suggestions
 ```
 
-### **8. Quiz Protection & Guidance**
-**"We've implemented intelligent quiz answer protection..."**
+### **8. Guardrails & Abuse Protection**
+**"Let's demonstrate our comprehensive protection system..."**
 
 **Live Demo Steps:**
-1. **Try sending "A"** as a message
-2. **Show blocking message**: "Use dedicated quiz feature!"
-3. **Try "Let's do a quiz"**
-4. **Show guidance response**: Interactive learning options
+1. **Try sending inappropriate content** 
+2. **Show safety blocking**: "Let's focus on learning!"
+3. **Try non-educational query**
+4. **Show educational guardrails**: ML/AI topics only
 
 **Technical Implementation:**
 ```python
-# Quiz answer blocking guard in app.py
-if len(message.strip()) <= 3 and re.match(r'^[A-D]$|^[1-4]$|^[A-D][1-4]$', message.upper()):
-    raise HTTPException(
-        status_code=422,
-        detail="I see you might be trying to answer a quiz! 🎯 Please use our dedicated quiz feature..."
-    )
+# Multi-layer guardrails in app.py
+async def run_comprehensive_safety_checks(message: str):
+    # Offline safety check (API-independent)
+    offline_score = await run_offline_safety_check(message)
+    # Educational content validation
+    if not await is_ml_educational_query(message):
+        return False
+    # OpenAI moderation for additional safety
+    return await openai_moderation_check(message)
 ```
 
 ---

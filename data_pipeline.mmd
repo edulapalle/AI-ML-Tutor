@@ -4,12 +4,12 @@ flowchart LR
     
     %% Content Generation Pipeline
     B --> C[OpenAI GPT-4o-mini<br/>Child-friendly Content]
-    C --> D[Multi-format Generation<br/>Definitions, Analogies, Examples, Quizzes]
+    C --> D[Multi-format Generation<br/>Definitions, Analogies, Examples, Educational Content]
     D --> E[Quality Filtering<br/>Content Length, Badword Check]
     E --> F[Structured Output<br/>ml_analogies.jsonl<br/>1,393 Educational Chunks]
     
     %% YouTube Data Pipeline
-    G[YouTube Channels<br/>StatQuest, 3Blue1Brown, Two Minute Papers] --> H[Video Scraping<br/>youtube_single_scraper.py]
+    G[YouTube Channels<br/>StatQuest] --> H[Video Scraping<br/>youtube_single_scraper.py]
     H --> I[Transcript Extraction<br/>youtube-transcript-api]
     I --> J[Content Processing<br/>Keyword Extraction, Chunking]
     J --> K[Metadata Enhancement<br/>Title, URL, Timestamp]

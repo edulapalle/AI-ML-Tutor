@@ -22,14 +22,18 @@
 5. **"LLM-based educational guardrails with conversation context"**
 6. **"OpenAI moderation for violence, hate, and self-harm detection"**
 
-### **Quiz Protection Innovation**
-*"We've solved a unique problem - preventing educational conversations from being confused with quiz answers. The system intelligently blocks obvious quiz patterns like 'A', 'B', 'C', 'D' while maintaining natural conversation flow."*
+### **Educational Guardrails Innovation**
+*"We've implemented sophisticated guardrails that ensure the AI only responds to ML/AI educational queries while maintaining natural conversation flow. The system uses multiple layers including offline safety checks and educational content validation."*
 
 **Code Reference:**
 ```python
-# Show this pattern matching in app.py
-if len(message.strip()) <= 3 and re.match(r'^[A-D]$|^[1-4]$', message.upper()):
-    # Block quiz answers, guide to dedicated quiz system
+# Show this in app.py
+async def run_comprehensive_safety_checks(message: str):
+    # Offline safety (works even if APIs are down)
+    offline_score = await run_offline_safety_check(message)
+    # Educational content enforcement
+    if not await is_ml_educational_query(message):
+        return False
 ```
 
 ---
@@ -47,7 +51,7 @@ if len(message.strip()) <= 3 and re.match(r'^[A-D]$|^[1-4]$', message.upper()):
 *"We don't just return the top vector matches. We use GPT-4o-mini as a judge to re-rank results specifically for child education, considering age-appropriateness and concept clarity."*
 
 ### **Intent Classification System**
-*"The system intelligently routes queries - 'explain' goes to definitions, 'compare' triggers multi-concept analysis, and 'quiz requests' get routed to dedicated guidance."*
+*"The system intelligently routes queries - 'explain' goes to definitions, 'compare' triggers multi-concept analysis, and non-educational requests get safely redirected."*
 
 **Performance Metrics:**
 - **Vector Search**: ~500ms for semantic similarity
@@ -125,7 +129,7 @@ if len(message.strip()) <= 3 and re.match(r'^[A-D]$|^[1-4]$', message.upper()):
 - **Agent Tests**: Autonomous decision-making, JSON parsing
 - **Authentication Tests**: JWT, session management, user flows
 - **Data Quality Tests**: Content validation, duplicate detection
-- **Session & Quiz Tests**: Latest fixes, conversation intelligence
+- **Session & Guardrails Tests**: Latest fixes, conversation intelligence
 
 ### **CI/CD Pipeline**
 *"Every single code change goes through automated testing with GitHub Actions. No manual deployment - everything is validated automatically."*

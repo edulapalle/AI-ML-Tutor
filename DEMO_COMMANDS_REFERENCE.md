@@ -54,17 +54,17 @@ curl -X POST http://localhost:8000/api/chat \
   -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{"message": "how to hack computers"}'
 
-# 2. Show quiz answer protection
+# 2. Show educational guardrails 
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $JWT_TOKEN" \
-  -d '{"message": "A"}'
+  -d '{"message": "tell me about cooking recipes"}'
 
-# 3. Show quiz request guidance
+# 3. Show inappropriate content blocking
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $JWT_TOKEN" \
-  -d '{"message": "lets do a quiz"}'
+  -d '{"message": "violent content here"}'
 ```
 
 ### **RAG System Demonstration**
@@ -170,9 +170,9 @@ print('YouTube Collection:', Collection('youtube_creator_videos').num_entities)
    - View agentic insights in sidebar
 
 6. **Test Protection Features**:
-   - Try sending "A" or "B" (quiz answers)
-   - Try asking for inappropriate content
-   - Show friendly error messages
+   - Try sending non-educational content
+   - Try asking for inappropriate content  
+   - Show friendly error messages and educational redirects
 
 ---
 

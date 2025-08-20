@@ -1,7 +1,9 @@
 # 🎓 AI/ML Educational Platform - Child-Friendly RAG System
 
-**Date**: December 20, 2024  
+**Date**: August 20, 2025  
 **Author**: Santosh Edulapalle  
+**Email**: santoshreddy.e96@gmail.com
+
 **Status**: 🚂 **Railway Production** | ✅ **Multi-Agent System** | 🎨 **Child-Friendly UI** | 🛡️ **Enterprise Security** | 🔄 **Session Continuity** | 💬 **Speech Bubbles**
 
 ---
@@ -32,113 +34,29 @@
 
 ## 🏗️ System Architecture & AI Agent Design
 
-*[📸 Picture Note: Add system architecture diagram showing the interaction between FastAPI backend, four AI agents, vector database (Milvus), knowledge graph (Neo4j), and frontend components]*
-
 ### **Overall System Design**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Child-Friendly Frontend                      │
-│         (HTML/CSS/JS with Teddy Bear Loading Animations)       │
-└─────────────────────┬───────────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────────┐
-│                  FastAPI Application                           │
-│              (Authentication + Security)                       │
-├─────────────────────┬───────────────────────────────────────────┤
-│                     │                                           │
-│  ┌─────────────────▼─────────────────┐                        │
-│  │        RAG System                 │                        │
-│  │   ┌─────────────────────────────┐ │                        │
-│  │   │    Intent Classification    │ │                        │
-│  │   │   (explain/define/compare)  │ │                        │
-│  │   └─────────────────────────────┘ │                        │
-│  │   ┌─────────────────────────────┐ │                        │
-│  │   │   Multi-Source Retrieval    │ │                        │
-│  │   │  (Milvus + Neo4j Queries)   │ │                        │
-│  │   └─────────────────────────────┘ │                        │
-│  │   ┌─────────────────────────────┐ │                        │
-│  │   │      LLM Re-ranking         │ │                        │
-│  │   │    (GPT-4o-mini Judge)      │ │                        │
-│  │   └─────────────────────────────┘ │                        │
-│  └─────────────────┬─────────────────┘                        │
-│                    │                                           │
-│  ┌─────────────────▼─────────────────┐                        │
-│  │     Agentic Learning System       │                        │
-│  │  ┌─────────────────────────────┐  │                        │
-│  │  │   Learning Path Agent       │  │                        │
-│  │  │  (Next topic suggestions)   │  │                        │
-│  │  └─────────────────────────────┘  │                        │
-│  │  ┌─────────────────────────────┐  │                        │
-│  │  │  Comprehension Monitor      │  │                        │
-│  │  │ (Understanding tracking)    │  │                        │
-│  │  └─────────────────────────────┘  │                        │
-│  │  ┌─────────────────────────────┐  │                        │
-│  │  │ Goal Achievement Assistant  │  │                        │
-│  │  │  (Progress tracking)        │  │                        │
-│  │  └─────────────────────────────┘  │                        │
-│  │  ┌─────────────────────────────┐  │                        │
-│  │  │  Content Curation Agent     │  │                        │
-│  │  │  (Gap identification)       │  │                        │
-│  │  └─────────────────────────────┘  │                        │
-│  └─────────────────┬─────────────────┘                        │
-└────────────────────┼─────────────────────────────────────────────┘
-                     │
-        ┌────────────▼────────────┐
-        │   External Data Sources │
-        ├─────────────────────────┤
-        │  📊 Milvus Vector DB    │
-        │  (1,393 ML concepts)    │
-        │                         │
-        │  🎥 Neo4j Knowledge     │
-        │  Graph (91+ videos)     │
-        │                         │
-        │  👤 Supabase User DB    │
-        │  (Auth + Progress)      │
-        │                         │
-        │  🤖 OpenAI API          │
-        │  (GPT + Embeddings)     │
-        └─────────────────────────┘
-```
-
+![System Architecture](static/images/system_architecture.png)
 
 ### **Four AI Agents Architecture**
 
-*[📸 Picture Note: Add detailed AI agent interaction diagram showing data flow between agents and decision-making processes]*
+![AI Agent Architecture](static/images/ai_agents_architecture.png)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                  Agentic Learning System                        │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  🎯 Learning Path Agent          🧠 Comprehension Monitor       │
-│  ┌─────────────────────────┐    ┌─────────────────────────┐     │
-│  │ • Analyzes learning     │    │ • Tracks understanding  │     │
-│  │   history patterns      │    │   signals from chat     │     │
-│  │ • Uses Neo4j graph      │    │ • Detects confusion/    │     │
-│  │   for prerequisites     │    │   mastery patterns      │     │
-│  │ • Recommends next       │    │ • Adjusts difficulty    │     │
-│  │   optimal topics        │    │   autonomously          │     │
-│  └─────────────────────────┘    └─────────────────────────┘     │
-│             │                              │                   │
-│             └──────────────┬───────────────┘                   │
-│                            │                                   │
-│  📚 Goal Achievement        │         📖 Content Curation      │
-│     Assistant               │            Agent                 │
-│  ┌─────────────────────────┐│    ┌─────────────────────────┐   │
-│  │ • Tracks goal progress  ││    │ • Identifies content    │   │
-│  │ • Provides motivation   ││    │   gaps in learning      │   │
-│  │ • Manages deadlines     ││    │ • Suggests materials    │   │
-│  │ • Predicts success      ││    │   from knowledge base   │   │
-│  └─────────────────────────┘│    └─────────────────────────┘   │
-│                             │                                  │
-│                    ┌────────▼────────┐                         │
-│                    │   Orchestrator  │                         │
-│                    │   Coordination  │                         │
-│                    │   & Analytics   │                         │
-│                    └─────────────────┘                         │
-└─────────────────────────────────────────────────────────────────┘
-```
+### **RAG System Flow**
+
+![RAG System Flow](static/images/rag_system_flow.png)
+
+### **Data Pipeline**
+
+![Data Pipeline](static/images/data_pipeline.png)
+
+### **Security Architecture**
+
+![Security Architecture](static/images/security_architecture.png)
+
+### **Youtube Automation**
+
+![Youtube Automation](static/images/youtube_automation.png)
 
 ---
 
@@ -157,7 +75,7 @@
 
 #### **Data Source 2: YouTube Educational Videos**
 - **Dataset**: `statquest_videos_export.json` (104 videos, 312 content pieces)
-- **Sources**: StatQuest, 3Blue1Brown, Two Minute Papers
+- **Sources**: StatQuest
 - **Justification**:
   - **Trusted Educational Content**: Established educational YouTube channels
   - **Visual Learning**: Supports different learning styles
@@ -169,7 +87,7 @@
 #### **Vector Database: Milvus/Zilliz Cloud**
 - **Why Chosen**: 
   - **Scalability**: Handles large-scale vector operations efficiently
-  - **Performance**: Sub-second similarity search on 1000+ vectors
+  - **Performance**: Sub-second similarity search on 1300+ vectors
   - **Cloud-native**: Serverless with automatic scaling
   - **Cost-effective**: Free tier sufficient for educational use
 - **Alternatives Considered**: Pinecone (limited free tier), Weaviate (complex setup)
@@ -211,7 +129,7 @@
 
 ## 🚀 Development Journey & Challenges
 
-### **Phase 1: Foundation (Weeks 1-2)**
+### **Phase 1: Foundation**
 
 **Steps Followed**:
 1. **Initial Setup**: Created FastAPI application with basic RAG functionality
@@ -225,7 +143,7 @@
 - **SSL Certificate Issues**: Local development with cloud services
   - *Solution*: Dynamic SSL certificate handling using `certifi.where()`
 
-### **Phase 2: Advanced Features (Weeks 3-4)**
+### **Phase 2: Advanced Features**
 
 **Steps Followed**:
 1. **Agentic System**: Developed four autonomous learning agents
@@ -241,7 +159,7 @@
 - **Performance Optimization**: Managing multiple API calls efficiently
   - *Solution*: Async processing and intelligent caching strategies
 
-### **Phase 3: Production & Deployment (Weeks 5-6)**
+### **Phase 3: Production & Deployment**
 
 **Steps Followed**:
 1. **UI Enhancement**: Child-friendly interface with teddy bear animations
@@ -269,15 +187,45 @@
 
 ## 🎨 User Interface & Experience
 
-*[📸 Picture Note: Add login page screenshot showing child-friendly design with colorful interface]*
+### **Login Page**
 
-*[📸 Picture Note: Add dashboard screenshot showing main chat interface with teddy bear loading animation]*
+![Login Page](static/images/login_page.png)
 
-*[📸 Picture Note: Add example query screenshot showing: "What is machine learning?" with child-friendly response including analogies]*
+### **User Registration**
 
-*[📸 Picture Note: Add bookmark/star feature screenshot showing saved learning concepts]*
+![User Registration](static/images/user_registration.png)
 
-*[📸 Picture Note: Add mobile responsive view screenshots showing the platform on different devices]*
+### **Main Homepage**
+
+![Main Homepage](static/images/Main_homepage.png)
+
+### **Session Continuty**
+
+![Session Continuty](static/images/session_continuty.png)
+
+### **Loading Screen**
+
+![Loading Screen](static/images/Loading_screen.png)
+
+### **User Profile**
+
+![User Profile](static/images/User_profile.png)
+
+### **User Bookmarks**
+
+![User Bookmarks](static/images/User_bookmarks.png)
+
+### **User Settings**
+
+![User Settings](static/images/User_settings.png)
+
+### **Agentic Panel**
+
+![Agentic Panel](static/images/Agentic_panel.png)
+
+### **Citation & Youtube Links**
+
+![Citation & Youtube Links](static/images/citation_youtube_links.png)
 
 ### **UI Design Principles**
 
@@ -432,7 +380,7 @@
 
 ---
 
-## 🆕 Latest Improvements (December 2024)
+## 🆕 Latest Improvements
 
 ### **🔄 Session Continuity System**
 **📍 Location**: `app.py` (`get_session_continuity_info`, `/api/session-continuity`)
@@ -494,7 +442,6 @@
 
 ### **Short-term Improvements (1-3 months)**
 - **Advanced Analytics**: Detailed learning pattern analysis and insights
-- **Mobile App**: Native iOS/Android applications for better accessibility
 - **Parent Dashboard**: Comprehensive progress monitoring for parents/teachers
 - **Gamification**: Learning badges, streaks, and achievement systems
 
@@ -691,7 +638,7 @@ The platform successfully addresses the critical need for accessible, safe, and 
 
 ---
 
-**Last Updated**: December 20, 2024  
+**Last Updated**: August 20, 2025  
 **Version**: 3.1.0 Session Continuity & Speech Bubbles Release  
 **Status**: 🚀 **Production Ready** | 🛡️ **Security Hardened** | 🧪 **Comprehensively Tested** | 📖 **Fully Documented** | 🔄 **Session Continuity** | 💬 **Speech Bubbles**
 

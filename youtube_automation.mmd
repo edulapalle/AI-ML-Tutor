@@ -1,58 +1,58 @@
 flowchart TD
     %% Cron Schedule
-    A[GitHub Actions Cron Schedule<br/>Every 30 Minutes<br/>'0,30 * * * *'] --> B[Trigger YouTube Monitor Workflow]
+    A[GitHub Actions Cron Schedule<br>Every 30 Minutes<br>0,30 * * * *] --> B[Trigger YouTube Monitor Workflow]
     
     %% Workflow Steps
     B --> C[Check for New StatQuest Videos]
-    C --> D[API Call to Railway App<br/>POST /api/youtube/process]
+    C --> D[API Call to Railway App<br>POST /api/youtube/process]
     
     %% API Processing
     D --> E{Response Code?}
-    E -->|200 OK| F[✅ Processing Successful]
-    E -->|Error| G[❌ Primary URL Failed]
+    E -->|200 OK| F[Processing Successful]
+    E -->|Error| G[Primary URL Failed]
     
     %% Fallback Mechanism
-    G --> H[Try Alternative URL<br/>Hard-coded Railway Domain]
+    G --> H[Try Alternative URL<br>Hard-coded Railway Domain]
     H --> I{Fallback Success?}
-    I -->|200 OK| J[✅ Alternative URL Works<br/>Update Secret Needed]
-    I -->|Failed| K[❌ All URLs Failed<br/>Alert Required]
+    I -->|200 OK| J[Alternative URL Works<br>Update Secret Needed]
+    I -->|Failed| K[All URLs Failed<br>Alert Required]
     
     %% Success Path
-    F --> L[Get Monitoring Status<br/>GET /api/youtube/status]
+    F --> L[Get Monitoring Status<br>GET /api/youtube/status]
     J --> L
     L --> M[Log Status Results]
     
     %% Backend Processing (Railway App)
-    N[Railway App Endpoints] --> O[/api/youtube/process<br/>Video Detection Logic]
-    N --> P[/api/youtube/status<br/>Monitoring Health Check]
+    N[Railway App Endpoints] --> O[/api/youtube/process<br>Video Detection Logic/]
+    N --> P[/api/youtube/status<br>Monitoring Health Check/]
     
     %% Video Processing Pipeline
-    O --> Q[Scan YouTube Channels<br/>StatQuest, 3Blue1Brown, Two Minute Papers]
-    Q --> R[Compare with Processed Videos<br/>Supabase: youtube_processed_videos]
+    O --> Q[Scan YouTube Channels<br>StatQuest, 3Blue1Brown, Two Minute Papers]
+    Q --> R[Compare with Processed Videos<br>Supabase: youtube_processed_videos]
     R --> S{New Videos Found?}
-    S -->|Yes| T[Download Video Metadata<br/>Title, URL, Transcript]
-    S -->|No| U[No Action Needed<br/>All Videos Current]
+    S -->|Yes| T[Download Video Metadata<br>Title, URL, Transcript]
+    S -->|No| U[No Action Needed<br>All Videos Current]
     
     %% Data Storage
-    T --> V[Extract Educational Keywords<br/>ML/AI Content Filter]
-    V --> W[Create Knowledge Graph Entries<br/>Neo4j: Video Nodes + Relationships]
-    W --> X[Generate Vector Embeddings<br/>OpenAI text-embedding-3-small]
-    X --> Y[Store in Milvus<br/>youtube_creator_videos Collection]
-    Y --> Z[Update Processed Videos Log<br/>Supabase: Mark as Processed]
+    T --> V[Extract Educational Keywords<br>ML/AI Content Filter]
+    V --> W[Create Knowledge Graph Entries<br>Neo4j: Video Nodes + Relationships]
+    W --> X[Generate Vector Embeddings<br>OpenAI text-embedding-3-small]
+    X --> Y[Store in Milvus<br>youtube_creator_videos Collection]
+    Y --> Z[Update Processed Videos Log<br>Supabase: Mark as Processed]
     
     %% Monitoring & Logging
-    M --> AA[GitHub Actions Log<br/>Workflow Execution Results]
+    M --> AA[GitHub Actions Log<br>Workflow Execution Results]
     U --> AA
     Z --> AA
-    K --> BB[Alert System<br/>Workflow Failure Notification]
+    K --> BB[Alert System<br>Workflow Failure Notification]
     
     %% Schedule Visualization
-    CC[Continuous Operation<br/>24/7 Automated Monitoring] --> A
-    CC --> DD[Manual Trigger Available<br/>workflow_dispatch Event]
+    CC[Continuous Operation<br>24/7 Automated Monitoring] --> A
+    CC --> DD[Manual Trigger Available<br>workflow_dispatch Event]
     DD --> B
     
     %% Performance Metrics
-    AA --> EE[Monitoring Statistics<br/>• Success Rate<br/>• New Videos per Day<br/>• Processing Time<br/>• Error Frequency]
+    AA --> EE[Monitoring Statistics<br>• Success Rate<br>• New Videos per Day<br>• Processing Time<br>• Error Frequency]
     
     %% Styling
     classDef schedule fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
