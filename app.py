@@ -988,6 +988,191 @@ async def get_session_continuity_info(user_id: str) -> Dict[str, Any]:
         print(f"   ⚠️ Error getting session continuity info: {e}")
         return {"has_previous": False}
 
+def build_intent_based_prompt(intent: str, audience: str, message: str, contexts: List[Dict], next_concepts: List[str], conversation_context: List[Dict]) -> str:
+    """Build a comprehensive prompt with conversation context for educational responses"""
+    
+    # Build conversation history for context
+    conversation_history = ""
+    if conversation_context:
+        conversation_history = "\n\n📚 **Previous Conversation Context:**\n"
+        for msg in conversation_context[-4:]:  # Use last 4 messages for context
+            role = msg.get('role', 'user')
+            content = msg.get('content', '')[:200]  # Limit length
+            if role == 'user':
+                conversation_history += f"Student: {content}\n"
+            else:
+                conversation_history += f"AI Teacher: {content}\n"
+        conversation_history += "\n"
+    
+    # Build context from retrieved documents
+    context_text = ""
+    if contexts:
+        context_text = "\n\n📖 **Retrieved Educational Content:**\n"
+        for i, ctx in enumerate(contexts, 1):
+            title = ctx.get('title', 'No title')
+            content = ctx.get('content', '')[:300]  # Limit length
+            source = ctx.get('source', 'Educational Content')
+            context_text += f"{i}. **{title}** ({source})\n{content}\n\n"
+    
+    # Build next concepts suggestions
+    next_topics = ""
+    if next_concepts:
+        next_topics = f"\n\n🔄 **Related Topics to Explore:** {', '.join(next_concepts[:5])}"
+    
+    # Determine audience-specific language
+    if audience == "child":
+        language_style = "Use simple words, fun analogies, and examples that a child can understand. Explain like you're talking to a curious 10-year-old."
+        max_length = "Keep responses under 200 words."
+    elif audience == "teen":
+        language_style = "Use age-appropriate language for teenagers. Include real-world examples and practical applications."
+        max_length = "Keep responses under 300 words."
+    else:  # adult
+        language_style = "Use appropriate technical terminology while remaining accessible. Include detailed explanations."
+        max_length = "Keep responses comprehensive but concise."
+    
+    # Intent-specific instructions
+    intent_instructions = {
+        "explain": "Provide a clear, educational explanation of the concept.",
+        "define": "Give a precise definition followed by examples and analogies.",
+        "compare": "Compare and contrast the concepts, highlighting similarities and differences.",
+        "analyze": "Break down the topic into key components and analyze each part.",
+        "general": "Provide helpful information that directly addresses the question."
+    }
+    
+    instruction = intent_instructions.get(intent, "Provide helpful educational information.")
+    
+    # Handle follow-up questions intelligently
+    follow_up_indicators = ["explain more", "tell me more", "can you elaborate", "more details", "explain further", "expand on"]
+    is_follow_up = any(indicator in message.lower() for indicator in follow_up_indicators)
+    
+    follow_up_context = ""
+    if is_follow_up and conversation_context:
+        # Get the last assistant response for context
+        last_assistant_msg = None
+        for msg in reversed(conversation_context):
+            if msg.get('role') == 'assistant':
+                last_assistant_msg = msg.get('content', '')
+                break
+        
+        if last_assistant_msg:
+            # Extract the main topic from the last response
+            follow_up_context = f"\n\n🔄 **Follow-up Context:** The student is asking for more details about your previous explanation. Build upon what you already explained: \"{last_assistant_msg[:150]}...\""
+    
+    # Build the complete prompt
+    prompt = f"""You are a friendly AI tutor specializing in machine learning and AI education. {language_style}
+
+🎯 **Current Task:** {instruction}
+
+👤 **Student's Question:** {message}
+
+{conversation_history}{follow_up_context}{context_text}{next_topics}
+
+📋 **Instructions:**
+1. {instruction}
+2. {language_style}
+3. {max_length}
+4. Use educational analogies and examples
+5. Include emojis to make it engaging
+6. If this is a follow-up question, build upon the previous conversation
+7. Always encourage further learning
+8. End with a question to keep the conversation going
+
+🎓 **Response:**"""
+
+    return prompt
+
+
+def generate_answer(prompt: str, user_data=None) -> str:
+    """Generate an answer using OpenAI with the given prompt and dynamic user context"""
+    try:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        # Build dynamic system message based on user data
+        if user_data:
+            age_group = getattr(user_data, 'age_group', 'child')
+            study_level = getattr(user_data, 'study_level', 'beginner')
+            username = getattr(user_data, 'username', 'student')
+            
+            print(f"   🎯 Personalizing response for {username} ({age_group}, {study_level})")
+            
+            # Dynamic system message based on actual user data
+            if age_group == "child":
+                age_instruction = "You're teaching a curious child (8-12 years old). Use simple words, fun analogies like comparing things to toys or animals, and short explanations. Make it exciting and engaging!"
+                complexity = "Keep explanations very simple and use lots of examples from everyday life."
+            elif age_group == "teen":
+                age_instruction = "You're teaching a teenager (13-17 years old). Use relatable examples from their world - social media, games, sports. Be encouraging and show real-world applications."
+                complexity = "Use age-appropriate language with some technical terms, but always explain them clearly."
+            else:  # adult
+                age_instruction = "You're teaching an adult learner. You can use more technical terminology while keeping explanations accessible and practical."
+                complexity = "Provide comprehensive explanations with technical depth as appropriate."
+            
+            # Study level specific instructions
+            if study_level == "beginner":
+                level_instruction = "This student is just starting their ML/AI journey. Start with fundamental concepts and build up gradually. Always explain the 'why' behind concepts."
+            elif study_level == "intermediate":
+                level_instruction = "This student has some ML/AI knowledge. You can reference basic concepts but focus on deeper understanding and connections between topics."
+            else:  # advanced
+                level_instruction = "This student has solid ML/AI knowledge. You can discuss nuanced topics, edge cases, and advanced applications."
+            
+            system_message = f"""You are a friendly, knowledgeable AI tutor specializing in machine learning and AI education.
+
+👤 **Current Student Profile:**
+- Name: {username}
+- Age Group: {age_group.title()}
+- Study Level: {study_level.title()}
+
+🎯 **Teaching Instructions:**
+{age_instruction}
+
+📚 **Complexity Level:**
+{complexity}
+
+🎓 **Learning Level:**
+{level_instruction}
+
+💬 **Conversation Style:**
+- Always maintain conversation context and build upon previous responses
+- Use encouraging language and celebrate curiosity
+- Include relevant emojis to make responses engaging
+- End with a question or suggestion to keep learning momentum
+- If this is a follow-up question, explicitly build upon the previous explanation
+- Adapt your teaching style to this specific student's profile"""
+
+        else:
+            # Fallback system message if no user data available
+            system_message = "You are a friendly, knowledgeable AI tutor specializing in machine learning and AI education. You adapt your explanations to the student's age and learning level, always maintaining conversation context."
+        
+        # Create the chat completion with dynamic, personalized system message
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": system_message
+                },
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
+            ],
+            max_tokens=800,
+            temperature=0.7,
+            top_p=0.9
+        )
+        
+        answer = response.choices[0].message.content.strip()
+        
+        # Clean up the response if it includes our prompt labels
+        if "🎓 **Response:**" in answer:
+            answer = answer.split("🎓 **Response:**")[-1].strip()
+        
+        return answer
+        
+    except Exception as e:
+        print(f"   ❌ OpenAI API error: {e}")
+        return "I'm having trouble generating a response right now. Could you please try asking your question again? I'm here to help you learn! 🤖"
+
+
 def generate_next_concepts_from_path(user_topics: List[str], current_topic: str = None) -> List[str]:
     """Generate next learning concepts based on user's learning path"""
     
@@ -2026,7 +2211,7 @@ I notice you're asking for a quiz, but our quiz feature is currently being set u
 
 What sounds interesting to you? I can explain any concept, give examples, or help you think through ML problems! 🚀"""
     else:
-        answer = generate_answer(prompt)
+        answer = generate_answer(prompt, current_user)
     
     print(f"   ✅ Generated {len(answer)} character response")
     
