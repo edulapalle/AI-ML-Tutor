@@ -198,9 +198,15 @@ class Dashboard {
 
             const token = this.getAuthToken();
             
-            // Check session preference
+            // Check session preference - only apply once, then reset
             const continueSession = sessionStorage.getItem('continueSession');
             const sessionHeader = continueSession === 'false' ? 'false' : 'true';
+            
+            // Reset the session preference after first use so subsequent messages can have context
+            if (continueSession === 'false') {
+                sessionStorage.removeItem('continueSession');
+                console.log('🔄 Resetting session preference - subsequent messages will have conversation context');
+            }
             
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -2085,9 +2091,15 @@ class Dashboard {
             this.showTeddyBearIndicator();
 
             // Send message to API
-            // Check session preference
+            // Check session preference - only apply once, then reset
             const continueSession = sessionStorage.getItem('continueSession');
             const sessionHeader = continueSession === 'false' ? 'false' : 'true';
+            
+            // Reset the session preference after first use so subsequent messages can have context
+            if (continueSession === 'false') {
+                sessionStorage.removeItem('continueSession');
+                console.log('🔄 Resetting session preference - subsequent messages will have conversation context');
+            }
             
             const response = await fetch('/api/chat', {
                 method: 'POST',
