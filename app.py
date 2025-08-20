@@ -1106,9 +1106,27 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
         # Check if this is a follow-up conversation
         recent_messages = conversation_history[-4:] if len(conversation_history) >= 4 else conversation_history
         
-        # NO QUIZ DETECTION IN MAIN CHAT - Use dedicated /api/quiz endpoints for quizzes
+        # QUIZ ANSWER GUARD - Block obvious quiz answers and redirect to proper quiz endpoints
         is_quiz_response = False
-        print(f"   📝 Main chat endpoint - treating all messages as educational conversations")
+        
+        # Block obvious quiz answer patterns that should use /api/quiz endpoints instead
+        if len(question.strip()) <= 3:  # Very short messages
+            import re
+            obvious_quiz_patterns = [
+                r'^\s*[a-d]\s*$',  # Just A, B, C, D
+                r'^\s*\d+\s*$',    # Just numbers like 1, 2, 3
+                r'^\s*[a-d]\d*\s*$',  # A1, B2, etc.
+            ]
+            
+            question_clean = question.strip().lower()
+            if any(re.match(pattern, question_clean, re.IGNORECASE) for pattern in obvious_quiz_patterns):
+                print(f"   🚫 Blocking obvious quiz answer pattern: '{question.strip()}'")
+                raise HTTPException(
+                    status_code=400, 
+                    detail="It looks like you're trying to answer a quiz question! For quizzes, please use the dedicated quiz feature instead of the main chat. Try asking 'How do I take a quiz?' for help with quizzes."
+                )
+        
+        print(f"   📝 Main chat endpoint - treating as educational conversation")
         
         # Look for follow-up indicators in the current question (if not a quiz response)
         follow_up_indicators = [
@@ -1988,7 +2006,29 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
     print(f"   📝 Building structured prompt with follow-up context...")
     prompt = build_intent_based_prompt(intent, request.audience, request.message, final_contexts, next_concepts, conversation_context)
     print(f"   🤖 Generating answer with GPT...")
-    answer = generate_answer(prompt)
+    
+    # Check if user is asking about quizzes and provide guidance
+    quiz_request_keywords = ['quiz me', 'take a quiz', 'quiz on', 'test me', 'question me', 'quiz about']
+    if any(keyword in request.message.lower() for keyword in quiz_request_keywords):
+        print(f"   🎯 Detected quiz request - providing guidance about quiz endpoints")
+        answer = f"""I'd love to help you with a quiz! 🎯
+
+However, for the best quiz experience, I recommend using our dedicated quiz feature instead of the main chat. 
+
+**Here's how to access quizzes:**
+1. Use the quiz endpoints directly (if you're a developer)
+2. Or ask your developer to integrate the quiz functionality
+
+**Available Quiz Features:**
+- 📝 Multiple choice questions
+- 📊 Scoring and feedback  
+- 📈 Progress tracking
+- 🎯 Topic-specific quizzes
+
+For now, I can help you learn about {', '.join(next_concepts[:3])} through explanations and discussions. What would you like to explore?"""
+    else:
+        answer = generate_answer(prompt)
+    
     print(f"   ✅ Generated {len(answer)} character response")
     
     # 8) Build citations
