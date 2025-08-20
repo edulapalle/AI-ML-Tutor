@@ -1053,3 +1053,72 @@ User requested complete removal of YouTube scraper and Neo4j integration to "bui
 ```
 
 **Test Results**: Both fixes verified with comprehensive testing - session clicks now trigger backend calls and JSON parsing handles wrapped responses correctly
+
+### QUIZ DETECTION CONFUSION FIX (Dec 19, 2024 - 11:45 PM):
+**Problem**: Follow-up questions and repeated questions incorrectly detected as quiz answers
+**User Experience**: System says "this is not the right answer for quiz..." then gives expected answer
+**Root Cause**: Over-aggressive quiz detection that checked ALL previous messages for quiz keywords
+
+**Original Flawed Logic**:
+```python
+# Checked ANY message in recent history for quiz keywords
+for msg in recent_messages:
+    if "quiz" in msg or "a)" in msg or "b)" in msg:
+        is_quiz_response = True  # ← Too broad!
+```
+
+**Smart Fix Applied**:
+1. **Only check LAST assistant message** for active quiz context
+2. **Require explicit quiz prompts**: "choose the correct answer", "which of the following", etc.
+3. **Require multiple choice format**: Must have at least 2 choices (a), b), c), d)
+4. **Pattern matching restrictions**: Only for very short messages (≤10 characters)
+5. **Follow-up protection**: Questions after quizzes treated as regular educational questions
+
+**Example Scenarios Fixed**:
+- ❌ Before: "What is machine learning?" → "This is not the right answer for quiz..."
+- ✅ After: "What is machine learning?" → Regular educational explanation
+- ❌ Before: "Can you explain more?" → Quiz answer evaluation
+- ✅ After: "Can you explain more?" → Follow-up explanation building on previous context
+
+**Test Results**: 5/5 scenarios pass - legitimate quiz answers detected, follow-up questions properly handled as regular educational queries
+
+**User Experience**: No more confusing "wrong quiz answer" messages for legitimate follow-up questions!
+
+### ARCHITECTURAL SEPARATION FIX (Dec 19, 2024 - 12:00 AM):
+**Major Decision**: Removed ALL quiz logic from main `/api/chat` endpoint 
+**Root Problem**: Frontend sends everything to `/api/chat` but backend has dedicated quiz endpoints
+**User's Insight**: "Didn't we decide to keep a separate endpoint /quiz for quizzes? Are we not using that?"
+
+**Architecture Before (Confused)**:
+```
+Frontend: Everything → /api/chat
+Backend: /api/chat tries to handle BOTH conversations AND quiz evaluation ❌
+Backend: /api/quiz/* endpoints exist but unused ❌
+```
+
+**Architecture After (Clean Separation)**:
+```
+Frontend: Conversations → /api/chat ✅
+Frontend: Quizzes → Need to use /api/quiz/* endpoints 
+Backend: /api/chat = ONLY educational conversations ✅  
+Backend: /api/quiz/* = ONLY quiz functionality ✅
+```
+
+**Changes Made**:
+- **Removed** all quiz detection logic from `build_intent_based_prompt()`
+- **Removed** quiz response context building 
+- **Removed** quiz answer pattern matching
+- **Removed** quiz-specific prompt instructions
+- **Simplified** conversation flow to be purely educational
+
+**Dedicated Quiz Endpoints Available**:
+- `POST /api/quiz/start` - Start new quiz session
+- `POST /api/quiz/answer` - Submit quiz answers  
+- `GET /api/quiz/result/{session_id}` - Get quiz results
+
+**User Experience**: 
+- ✅ Chat conversations are now purely educational without quiz confusion
+- ⚠️  Quiz functionality requires frontend integration with quiz endpoints
+- ✅ Clear separation of concerns - no more dual-purpose confusion
+
+**Next Steps**: Frontend should use dedicated quiz endpoints for quiz functionality rather than sending quiz requests through main chat

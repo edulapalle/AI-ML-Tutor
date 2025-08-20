@@ -1106,29 +1106,9 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
         # Check if this is a follow-up conversation
         recent_messages = conversation_history[-4:] if len(conversation_history) >= 4 else conversation_history
         
-        # First, check if this is a quiz response (higher priority than general follow-up)
-        for msg in recent_messages:
-            if msg.get("role") == "assistant" and any(quiz_indicator in msg.get("content", "").lower() 
-                                                    for quiz_indicator in ["quiz", "question 1", "question 2", "question 3","question 4", "a)", "b)", "c)", "d)"]):
-                is_quiz_response = True
-                break
-        
-        # Check if the current question looks like a quiz answer
-        quiz_answer_patterns = [
-            # Pattern: just letters/numbers (1A, 2B, etc.)
-            r'^\s*\d*[a-d]\s*$',  # 1A, 2B, A, B, etc.
-            r'^\s*[a-d]\d*\s*$',  # A1, B2, etc.
-            r'^\s*\d+\s*[a-d]\s*$',  # 1 A, 2 B, etc.
-            r'^\s*[a-d]\s+\d*\s*$',  # A 1, B 2, etc.
-            # Pattern: answer format
-            r'^\s*(answer|ans|a)[\s:]*[a-d]\d*\s*$',
-            r'^\s*\d+[\s\.\)]*[a-d]\s*$',  # 1. A, 1) B, etc.
-        ]
-        
-        import re
-        question_clean = question.strip().lower()
-        if any(re.match(pattern, question_clean, re.IGNORECASE) for pattern in quiz_answer_patterns):
-            is_quiz_response = True
+        # NO QUIZ DETECTION IN MAIN CHAT - Use dedicated /api/quiz endpoints for quizzes
+        is_quiz_response = False
+        print(f"   📝 Main chat endpoint - treating all messages as educational conversations")
         
         # Look for follow-up indicators in the current question (if not a quiz response)
         follow_up_indicators = [
@@ -1150,24 +1130,10 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
         has_follow_up_words = any(indicator in question_lower for indicator in follow_up_indicators)
         has_pronouns = any(pronoun in question_lower for pronoun in pronoun_indicators)
         
-        # Determine if this is a follow-up (more refined logic, but quiz responses take priority)
-        if not is_quiz_response:
-            is_follow_up = (has_follow_up_words or (has_pronouns and len(question.split()) < 10)) and len(recent_messages) > 0
+        # Determine if this is a follow-up (simplified logic - no quiz responses in main chat)
+        is_follow_up = (has_follow_up_words or (has_pronouns and len(question.split()) < 10)) and len(recent_messages) > 0
         
-        if is_quiz_response:
-            # Build quiz response context
-            follow_up_context = "\n\n🎯 QUIZ CONTEXT (for answer evaluation):\n"
-            for msg in recent_messages:
-                role = msg.get("role", "unknown")
-                content = msg.get("content", "")
-                # Include full quiz context for proper evaluation
-                if role == "assistant" and any(quiz_word in content.lower() for quiz_word in ["quiz", "question", "a)", "b)", "c)", "d)"]):
-                    follow_up_context += f"Previous Quiz: {content}\n\n"
-                elif role == "user":
-                    follow_up_context += f"Student Response: {content}\n\n"
-            
-            print(f"   🎯 Detected quiz response: '{question}'")
-        elif is_follow_up:
+        if is_follow_up:
             # Build conversation context for follow-up
             follow_up_context = "\n\n🔗 CONVERSATION CONTEXT (for follow-up):\n"
             for msg in recent_messages:
@@ -1194,9 +1160,7 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
             print(f"   🔗 Detected follow-up conversation (topic: {recent_topic})")
     
     # Base system message with context awareness
-    if is_quiz_response:
-        base_system = f"You are a kind ML tutor for a {audience}. The student is responding to a quiz question. Evaluate their answer, provide feedback (correct/incorrect), explain why, and continue the educational conversation naturally. Be encouraging and educational."
-    elif is_follow_up:
+    if is_follow_up:
         base_system = f"You are a kind ML tutor for a {audience}. This is a FOLLOW-UP question to our recent conversation. Build upon what we just discussed. Reference previous context naturally. Use clear, educational language."
     else:
         base_system = f"You are a kind ML tutor for a {audience}. Use clear, educational language. Be accurate and safe."
@@ -1286,13 +1250,11 @@ def build_intent_based_prompt(intent: str, audience: str, question: str, context
     
     # Special instructions for different conversation types
     special_instructions = ""
-    if is_quiz_response:
-        special_instructions = "\n\nIMPORTANT: This is a quiz answer evaluation. 1) State if the answer is correct/incorrect, 2) Explain why, 3) Provide the correct explanation, 4) Continue the educational conversation. Be encouraging and supportive."
-    elif is_follow_up:
+    if is_follow_up:
         special_instructions = "\n\nIMPORTANT: This is a follow-up question. Build upon our previous conversation naturally. Reference what we discussed before. Don't repeat basic definitions unless necessary. Focus on extending or clarifying the previous topic."
     
     # Determine which context to use
-    context_to_use = follow_up_context if (is_quiz_response or is_follow_up) else ""
+    context_to_use = follow_up_context if is_follow_up else ""
 
     return f"""{base_system}{context_to_use}
 Context (use to answer):
