@@ -2052,16 +2052,44 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
             latency_ms=int((time.time() - t0) * 1000)
         )
     
-    # 4) Retrieval based on intent
+    # 4) Retrieval based on intent with follow-up question handling
     print(f"\n📚 DATA RETRIEVAL:")
+    
+    # 🔄 FOLLOW-UP QUESTION DETECTION - Check BEFORE vector search
+    follow_up_indicators = ["explain more", "tell me more", "can you elaborate", "more details", "explain further", "expand on", "can you explain more"]
+    is_follow_up = any(indicator in request.message.lower() for indicator in follow_up_indicators)
+    
+    # Determine search query - use previous topic for follow-up questions
+    search_query = request.message
+    if is_follow_up and conversation_context:
+        print(f"   🔄 FOLLOW-UP DETECTED: '{request.message}'")
+        print(f"   💬 Conversation context available: {len(conversation_context)} messages")
+        
+        # Get the last user question to understand what topic to expand on
+        last_user_msg = None
+        for msg in reversed(conversation_context):
+            if msg.get('role') == 'user':
+                last_user_msg = msg.get('content', '')
+                break
+        
+        if last_user_msg:
+            search_query = last_user_msg  # Use the previous question as search query
+            print(f"   🎯 Using previous question for search: '{search_query[:50]}...'")
+        else:
+            # Fallback: use a generic ML search term instead of "explain more"
+            search_query = "machine learning fundamentals"
+            print(f"   🎯 Using fallback search term: '{search_query}'")
+    else:
+        print(f"   📝 Direct question: '{search_query[:50]}...'")
+    
     if intent in ["explain", "define"]:
         # Milvus only - prioritize rich education content for explanations/definitions
         print(f"   🔍 Searching rich_ml_education collection...")
-        rich_hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=8)
+        rich_hits = milvus_search(COLL_RICH_EDUCATION, search_query, top_k=8)
         print(f"   📊 Retrieved {len(rich_hits)} results from rich_ml_education")
         
         print(f"   🔍 Searching youtube_creator_videos collection...")
-        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=4)
+        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, search_query, top_k=4)
         print(f"   📊 Retrieved {len(youtube_hits)} results from youtube_creator_videos")
         
         # Combine results (rich education first, then YouTube)
@@ -2070,8 +2098,8 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
     elif intent == "examples":
         # For examples, prioritize YouTube videos first for practical demonstrations
         print(f"   🔍 Searching for practical examples...")
-        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=6)
-        rich_hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=6)
+        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, search_query, top_k=6)
+        rich_hits = milvus_search(COLL_RICH_EDUCATION, search_query, top_k=6)
         print(f"   📊 YouTube videos: {len(youtube_hits)} results")
         print(f"   📊 Rich education: {len(rich_hits)} results")
         
@@ -2081,8 +2109,8 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
     elif intent == "quiz":
         # For quizzes, prioritize rich educational content for structured knowledge
         print(f"   🔍 Searching for quiz-worthy content...")
-        rich_hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=10)
-        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=2)
+        rich_hits = milvus_search(COLL_RICH_EDUCATION, search_query, top_k=10)
+        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, search_query, top_k=2)
         print(f"   📊 Rich education: {len(rich_hits)} results")
         print(f"   📊 YouTube videos: {len(youtube_hits)} results")
         
@@ -2092,8 +2120,8 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
     else:
         # Combined search for compare/related/next
         print(f"   🔍 Combined search across both collections...")
-        rich_hits = milvus_search(COLL_RICH_EDUCATION, request.message, top_k=8)
-        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, request.message, top_k=4)
+        rich_hits = milvus_search(COLL_RICH_EDUCATION, search_query, top_k=8)
+        youtube_hits = milvus_search(COLL_YOUTUBE_VIDEOS, search_query, top_k=4)
         print(f"   📊 Rich education: {len(rich_hits)} results")
         print(f"   📊 YouTube videos: {len(youtube_hits)} results")
         hits = rich_hits + youtube_hits
