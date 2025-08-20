@@ -1471,22 +1471,6 @@ Suggested next concepts: {', '.join(next_concepts) if next_concepts else 'Explor
 
 Keep response educational, engaging, and under 200 words. Always maintain learning focus.{special_instructions}"""
 
-def generate_answer(prompt: str) -> str:
-    """Generate answer using OpenAI"""
-    if not oai:
-        return "I'm sorry, but I'm having trouble processing your request right now."
-    
-    try:
-        response = oai.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.2,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return (response.choices[0].message.content or "").strip()
-    except Exception as e:
-        print(f"❌ Answer generation failed: {e}")
-        return "I apologize, but I'm having trouble generating a response right now."
-
 def generate_quiz_questions(topic: str, difficulty: str, num_questions: int, audience: str = "kid") -> List[QuizQuestion]:
     """Generate quiz questions using LLM and knowledge base"""
     
