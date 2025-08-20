@@ -334,9 +334,28 @@ async def run_guardrails(
             "latency_ms": latency_ms
         }
     
-    # 3. Allow conversation follow-ups
+    # 3. Allow conversation follow-ups and continuation requests
     if is_followup(q):
         return guardrail_result(True, "Conversation follow-up.")
+    
+    # 3.5. Allow session continuation requests
+    continuation_patterns = [
+        r'continue.*discussion.*about',
+        r'tell me more about',
+        r'continue.*quiz.*about',
+        r'please continue.*about',
+        r'can you tell me more about'
+    ]
+    
+    for pattern in continuation_patterns:
+        if re.search(pattern, q, re.IGNORECASE):
+            print(f"   ✅ CONTINUATION REQUEST: '{q}' recognized as session continuation")
+            latency_ms = int((time.time() - t0) * 1000)
+            return {
+                "allowed": True, 
+                "reason": "session_continuation", 
+                "latency_ms": latency_ms
+            }
     
     # 3.5. Check if user is in educational context (quiz answers, etc.)
     if is_in_educational_context(q, conversation_history):

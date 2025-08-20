@@ -2236,7 +2236,11 @@ class Dashboard {
         // Format timestamp
         const timestamp = new Date(sessionInfo.timestamp).toLocaleString();
         
-        // Build summary HTML
+        // Build summary HTML with continuation preview
+        const continuationPreview = sessionInfo.conversation_type === 'quiz' 
+            ? `Continue the quiz about ${sessionInfo.main_topic}`
+            : `Can you tell me more about ${sessionInfo.main_topic}?`;
+            
         summaryDiv.innerHTML = `
             <div class="session-topic">
                 📚 Previous Topic: ${sessionInfo.main_topic}
@@ -2247,6 +2251,10 @@ class Dashboard {
             </div>
             <div class="session-context">
                 ${sessionInfo.summary}
+            </div>
+            <div class="session-continuation-preview" style="background-color: #FFF4B3; padding: 10px; border-radius: 8px; margin: 10px 0; border-left: 3px solid #FFD93B;">
+                <strong>🔄 If you continue:</strong><br>
+                <em>"${continuationPreview}"</em> will be automatically asked
             </div>
             <div class="session-timestamp">
                 Last activity: ${timestamp}
@@ -2272,7 +2280,41 @@ class Dashboard {
         // Add a welcome back message to chat
         this.addWelcomeBackMessage(sessionInfo);
         
+        // Auto-trigger a follow-up prompt based on the previous conversation
+        this.autoTriggerContinuation(sessionInfo);
+        
         console.log('Continuing previous session:', sessionInfo.main_topic);
+    }
+
+    autoTriggerContinuation(sessionInfo) {
+        // Generate an appropriate follow-up prompt based on conversation type and topic
+        let followUpPrompt = "";
+        
+        if (sessionInfo.conversation_type === 'quiz') {
+            followUpPrompt = `Continue the quiz about ${sessionInfo.main_topic}`;
+        } else if (sessionInfo.conversation_type === 'explanation') {
+            followUpPrompt = `Can you tell me more about ${sessionInfo.main_topic}?`;
+        } else {
+            followUpPrompt = `Please continue our discussion about ${sessionInfo.main_topic}`;
+        }
+        
+        // Add a visual indicator that we're continuing automatically
+        const chatMessages = document.getElementById('chatMessages');
+        const autoDiv = document.createElement('div');
+        autoDiv.className = 'message system';
+        autoDiv.innerHTML = `
+            <div class="message-content" style="background-color: #E3F2FD; color: #333; font-style: italic; border-left: 3px solid #FFD93B; padding-left: 10px;">
+                🔄 Automatically continuing: "${followUpPrompt}"
+            </div>
+        `;
+        chatMessages.appendChild(autoDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Automatically send the follow-up prompt after a short delay
+        setTimeout(() => {
+            console.log('🔄 Auto-triggering follow-up:', followUpPrompt);
+            this.sendChatMessage(followUpPrompt);
+        }, 1000); // 1 second delay to let user see the continuation message
     }
 
     startNewSession() {

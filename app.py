@@ -1762,6 +1762,11 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
             latency_ms=int((time.time() - t0) * 1000)
         )
     
+    # Handle session continuation requests with enhanced context
+    if guardrail_result.get("reason") == "session_continuation" and guardrail_result.get("allowed", False):
+        print(f"   🔄 SESSION CONTINUATION: Processing enhanced follow-up request")
+        # Continue with normal RAG processing but with clear continuation context
+    
     if guardrail_result["allowed"] == False:
         reason = guardrail_result["reason"]
         latency = guardrail_result.get("latency_ms", 0)
