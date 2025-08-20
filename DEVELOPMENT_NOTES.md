@@ -1005,3 +1005,25 @@ User requested complete removal of YouTube scraper and Neo4j integration to "bui
 - 1-second delay for UX clarity
 
 **User Experience**: One-click session continuation with intelligent prompt generation
+
+### SESSION CONTINUITY LOOP FIX (Dec 19, 2024 - 11:00 PM):
+**Problem**: Session continuity was detecting fallback LLM responses as "meaningful conversations"
+**Root Cause**: When user typed "continue the previous conversation", fallback LLM responded "I can't continue a previous conversation since I don't have the details...", and this became the "last assistant message" for session continuity
+
+**Vicious Loop**:
+1. User types: "continue the previous conversation"
+2. System: Fallback response "I can't continue..."  
+3. Session continuity detects this as the "conversation to continue"
+4. Modal shows: "Previous topic: our previous discussion" with confusing summary
+5. User clicks continue → Same useless loop
+
+**Smart Fix Applied**:
+- **Skip fallback responses** with phrases like "I can't continue", "I don't have the details"
+- **Skip continuation requests** like "continue the previous conversation"
+- **Find actual meaningful ML conversations** by looking deeper in chat history
+- **Smart topic extraction** from content when topics_mentioned is empty
+- **Enhanced debugging** to trace what conversations are found
+
+**Test Results**: ✅ Correctly skips fallback responses and finds real conversations like "deep learning" discussions
+
+**User Experience**: Session continuity now shows actual meaningful conversations instead of meta-conversation about continuing

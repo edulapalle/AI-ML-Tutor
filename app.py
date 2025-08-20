@@ -891,21 +891,44 @@ async def get_session_continuity_info(user_id: str) -> Dict[str, Any]:
             print(f"   📭 No previous chat history found - no session to continue")
             return {"has_previous": False}
         
-        # Get the last assistant message to understand what we were discussing
+        # Get the last meaningful assistant message (skip fallback/error responses)
         last_assistant_message = None
         last_user_message = None
         
+        # Skip recent continuation attempts and fallback responses
         for msg in recent_chat:
+            content = msg.get('message_content', '').lower()
+            
             if msg.get('message_role') == 'assistant' and not last_assistant_message:
+                # Skip fallback responses that indicate inability to continue
+                if any(skip_phrase in content for skip_phrase in [
+                    "i can't continue",
+                    "i don't have the details",
+                    "please ask me about ml",
+                    "ask me educational questions",
+                    "i'm here to help with ai and machine learning"
+                ]):
+                    print(f"   ⏭️ Skipping fallback assistant message: {content[:50]}...")
+                    continue
                 last_assistant_message = msg
+                
             elif msg.get('message_role') == 'user' and not last_user_message:
+                # Skip continuation requests - we want the original question
+                if any(continue_phrase in content for continue_phrase in [
+                    "continue the previous conversation",
+                    "continue our discussion",
+                    "tell me more about",
+                    "can you continue"
+                ]):
+                    print(f"   ⏭️ Skipping continuation request: {content[:50]}...")
+                    continue
                 last_user_message = msg
             
             if last_assistant_message and last_user_message:
                 break
         
         if not last_assistant_message or not last_user_message:
-            print(f"   📭 Incomplete conversation pair found - no session to continue")
+            print(f"   📭 No meaningful conversation pair found - no session to continue")
             return {"has_previous": False}
         
         # Extract topic and context from the conversation
@@ -915,7 +938,27 @@ async def get_session_continuity_info(user_id: str) -> Dict[str, Any]:
         
         # Try to extract the main topic being discussed
         topics_mentioned = last_assistant_message.get('topics_mentioned', [])
-        main_topic = topics_mentioned[0] if topics_mentioned else "our previous discussion"
+        
+        # Smart topic extraction from content if topics_mentioned is empty or generic
+        if not topics_mentioned or topics_mentioned == ["our previous discussion"]:
+            # Extract ML/AI topics from the user question and assistant response
+            ml_keywords = [
+                'machine learning', 'deep learning', 'neural network', 'ai', 'artificial intelligence',
+                'algorithm', 'model', 'training', 'data science', 'regression', 'classification',
+                'supervised', 'unsupervised', 'cnn', 'rnn', 'lstm', 'backpropagation', 'gradient',
+                'overfitting', 'underfitting', 'feature', 'dataset', 'prediction'
+            ]
+            
+            combined_text = f"{last_user_query} {last_content}".lower()
+            found_topics = [keyword for keyword in ml_keywords if keyword in combined_text]
+            
+            if found_topics:
+                main_topic = found_topics[0]  # Use the first found topic
+                print(f"   🔍 Extracted topic from content: {main_topic}")
+            else:
+                main_topic = "machine learning concepts"
+        else:
+            main_topic = topics_mentioned[0]
         
         # Determine conversation type
         conversation_type = "lesson"
@@ -928,6 +971,8 @@ async def get_session_continuity_info(user_id: str) -> Dict[str, Any]:
         summary = last_content[:150] + "..." if len(last_content) > 150 else last_content
         
         print(f"   ✅ Previous session found: {main_topic} ({conversation_type})")
+        print(f"   🔍 Last user query: {last_user_query[:50]}...")
+        print(f"   🔍 Last assistant response: {last_content[:50]}...")
         
         return {
             "has_previous": True,
