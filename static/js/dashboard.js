@@ -2313,7 +2313,7 @@ class Dashboard {
         // Automatically send the follow-up prompt after a short delay
         setTimeout(() => {
             console.log('🔄 Auto-triggering follow-up:', followUpPrompt);
-            this.sendChatMessage(followUpPrompt);
+            this.sendMessage(followUpPrompt);
         }, 1000); // 1 second delay to let user see the continuation message
     }
 

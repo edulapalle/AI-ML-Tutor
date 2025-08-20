@@ -1027,3 +1027,29 @@ User requested complete removal of YouTube scraper and Neo4j integration to "bui
 **Test Results**: ✅ Correctly skips fallback responses and finds real conversations like "deep learning" discussions
 
 **User Experience**: Session continuity now shows actual meaningful conversations instead of meta-conversation about continuing
+
+### DUAL CRITICAL FIXES (Dec 19, 2024 - 11:20 PM):
+
+#### 🔧 **FIX 1: Session Continuity Click Not Triggering LLM**
+**Problem**: Clicking "Continue" button only posted visual message but never sent to backend
+**Root Cause**: `autoTriggerContinuation()` called `this.sendChatMessage()` which doesn't exist
+**Solution**: Fixed to call correct method `this.sendMessage()`
+**Result**: ✅ Session continuity now actually triggers LLM conversations
+
+#### 🔧 **FIX 2: Agentic Insights JSON Parsing Error**
+**Problem**: `'str' object has no attribute 'get'` when parsing LLM responses
+**Root Cause**: LLM returned `{"insights": [...]}` but code expected direct array `[...]`
+**Solution**: 
+- Detect wrapped JSON format: `{"insights": [...]}`
+- Extract inner array: `insights_data = insights_data["insights"]`
+- Validate data types before processing: `isinstance(insight_data, dict)`
+- Applied same fix to path recommendations
+**Result**: ✅ Agentic insights now handle both JSON formats gracefully
+
+**Backend Logs Evidence**:
+```
+🧠 Comprehension insights OpenAI response: ```json { "insights": [
+❌ Error generating comprehension insights: 'str' object has no attribute 'get'
+```
+
+**Test Results**: Both fixes verified with comprehensive testing - session clicks now trigger backend calls and JSON parsing handles wrapped responses correctly

@@ -517,9 +517,20 @@ class LearningPathAgent:
             if recommendations_data is None:
                 recommendations_data = []
             
+            # Handle both formats: direct array or object with "recommendations" key
+            if isinstance(recommendations_data, dict) and "recommendations" in recommendations_data:
+                recommendations_data = recommendations_data["recommendations"]
+            elif not isinstance(recommendations_data, list):
+                print(f"⚠️ Unexpected recommendations_data format: {type(recommendations_data)}")
+                recommendations_data = []
+            
             # Convert to LearningPathRecommendation objects
             recommendations = []
             for rec_data in recommendations_data:
+                # Ensure rec_data is a dictionary
+                if not isinstance(rec_data, dict):
+                    print(f"⚠️ Skipping invalid rec_data: {type(rec_data)} - {rec_data}")
+                    continue
                 recommendation = LearningPathRecommendation(
                     user_id=user_id,
                     current_topic=rec_data.get("current_topic", "general"),
@@ -806,8 +817,19 @@ class ComprehensionMonitor:
             if insights_data is None:
                 insights_data = []
             
+            # Handle both formats: direct array or object with "insights" key
+            if isinstance(insights_data, dict) and "insights" in insights_data:
+                insights_data = insights_data["insights"]
+            elif not isinstance(insights_data, list):
+                print(f"⚠️ Unexpected insights_data format: {type(insights_data)}")
+                insights_data = []
+            
             insights = []
             for insight_data in insights_data:
+                # Ensure insight_data is a dictionary
+                if not isinstance(insight_data, dict):
+                    print(f"⚠️ Skipping invalid insight_data: {type(insight_data)} - {insight_data}")
+                    continue
                 insight = LearningInsight(
                     user_id=user_id,
                     insight_type=insight_data.get("insight_type", "general"),
