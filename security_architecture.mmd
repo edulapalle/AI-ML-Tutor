@@ -19,12 +19,15 @@ graph TD
     E --> E1[Input Sanitization<br/>XSS Prevention]
     E --> E2[Length Validation<br/>Max 1000 chars]
     E --> E3[Profanity Detection<br/>Custom Word Lists]
+    E --> E4[Quiz Answer Protection<br/>Blocks A,B,C,D patterns]
     
-    %% AI Guardrails Layer
-    E --> F[AI Guardrails Layer]
-    F --> F1[LLM Classification<br/>Educational vs Non-Educational]
-    F --> F2[Context Analysis<br/>Conversation Flow]
-    F --> F3[Intent Validation<br/>Learning-focused]
+    %% Enhanced AI Guardrails Layer
+    E --> F[Enhanced AI Guardrails Layer]
+    F --> F1[Offline Safety Check<br/>API-Independent Protection]
+    F --> F2[LLM Classification<br/>Educational vs Non-Educational]
+    F --> F3[Context Analysis<br/>Conversation + Session History]
+    F --> F4[Intent Validation<br/>Learning-focused]
+    F --> F5[Greeting Recognition<br/>Override Protection]
     
     %% OpenAI Moderation Layer
     F --> G[OpenAI Moderation]
@@ -36,20 +39,26 @@ graph TD
     C1 --> H{Valid Token?}
     D1 --> I{Rate Limit OK?}
     E1 --> J{Content Safe?}
-    F1 --> K{Educational?}
+    E4 --> Quiz{Quiz Answer?}
+    F1 --> Offline{Offline Safe?}
+    F2 --> K{Educational?}
     G1 --> L{Moderation Pass?}
     
     %% Allow Path
     H -->|Yes| I
     I -->|Yes| J
-    J -->|Yes| K
+    J -->|Yes| Quiz
+    Quiz -->|No| Offline
+    Offline -->|Yes| K
     K -->|Yes| L
-    L -->|Yes| M[Process Request<br/>RAG System]
+    L -->|Yes| M[Process Request<br/>Enhanced RAG System]
     
     %% Block Paths
     H -->|No| N[401 Unauthorized<br/>Please log in]
     I -->|No| O[429 Rate Limited<br/>Take a break!]
     J -->|No| P[400 Bad Request<br/>Let's keep it friendly]
+    Quiz -->|Yes| QuizBlock[Quiz Protection Block<br/>Use dedicated quiz feature!]
+    Offline -->|No| OfflineBlock[Offline Safety Block<br/>Child-friendly content only!]
     K -->|No| Q[422 Off-topic<br/>Let's focus on learning!]
     L -->|No| R[403 Blocked<br/>Content not appropriate]
     
@@ -69,6 +78,8 @@ graph TD
     P --> V
     Q --> V
     R --> V
+    QuizBlock --> V
+    OfflineBlock --> V
     V --> W[Alert System<br/>Abuse Pattern Detection]
     
     %% Styling
@@ -86,10 +97,10 @@ graph TD
     class A input
     class C,C1,C2,C3 auth
     class D,D1,D2,D3 rate
-    class E,E1,E2,E3 content
-    class F,F1,F2,F3 ai
+    class E,E1,E2,E3,E4 content
+    class F,F1,F2,F3,F4,F5 ai
     class G,G1,G2,G3 moderation
-    class H,I,J,K,L decision
+    class H,I,J,K,L,Quiz,Offline decision
     class M,S,T,T1,T2,T3,U allow
-    class N,O,P,Q,R block
+    class N,O,P,Q,R,QuizBlock,OfflineBlock block
     class V,W monitoring

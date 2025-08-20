@@ -94,7 +94,7 @@ jobs:
         echo "🔍 Running individual test suites for debugging..."
         
         # Test each suite individually to identify failures
-        for suite in auth rag security features; do
+        for suite in auth rag security features session_quiz_fixes; do
           echo "Testing $suite suite..."
           if python run_comprehensive_tests.py --suite $suite; then
             echo "✅ $suite suite passed"

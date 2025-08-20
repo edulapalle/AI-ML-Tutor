@@ -1,19 +1,26 @@
 graph TD
     %% Child-Friendly Frontend
-    A[Child-Friendly Frontend<br/>HTML/CSS/JS with Teddy Bear Animations] --> B[FastAPI Application<br/>Authentication + Security]
+    A[Child-Friendly Frontend<br/>Speech Bubbles + Session Continuity<br/>HTML/CSS/JS with Teddy Bear Animations] --> B[FastAPI Application<br/>Authentication + Security + Health Checks]
     
     %% FastAPI Core Components
-    B --> C[RAG System]
-    B --> D[Agentic Learning System]
+    B --> C[RAG System + Quiz Protection]
+    B --> D[Enhanced Agentic Learning System]
+    B --> SessionCont[Session Continuity System<br/>/api/session-continuity]
     
     %% RAG System Components
     C --> E[Intent Classification<br/>explain/define/compare]
     C --> F[Multi-Source Retrieval<br/>Milvus + Neo4j Queries]
     C --> G[LLM Re-ranking<br/>GPT-4o-mini Judge]
+    C --> QuizGuard[Quiz Answer Protection<br/>Blocks A,B,C,D patterns]
     
-    %% Agentic Learning System Components
+    %% Session Continuity Components
+    SessionCont --> SC1[Smart Conversation Detection]
+    SessionCont --> SC2[Fallback Response Filtering]
+    SessionCont --> SC3[Context-Aware Resumption]
+    
+    %% Enhanced Agentic Learning System Components
     D --> H[Learning Path Agent<br/>Next topic suggestions]
-    D --> I[Comprehension Monitor<br/>Understanding tracking]
+    D --> I[Enhanced Comprehension Monitor<br/>Robust JSON Parsing]
     D --> J[Goal Achievement Assistant<br/>Progress tracking]
     D --> K[Content Curation Agent<br/>Gap identification]
     
@@ -39,6 +46,9 @@ graph TD
     J --> O
     K --> M
     K --> N
+    SessionCont --> O
+    SC1 --> O
+    QuizGuard --> O
     
     %% Styling
     classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -46,9 +56,13 @@ graph TD
     classDef rag fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
     classDef agents fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef external fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef session fill:#fff8e1,stroke:#ff8f00,stroke-width:2px
+    classDef protection fill:#ffebee,stroke:#c62828,stroke-width:2px
     
     class A frontend
     class B backend
     class C,E,F,G rag
     class D,H,I,J,K agents
     class L,M,N,O,P external
+    class SessionCont,SC1,SC2,SC3 session
+    class QuizGuard protection

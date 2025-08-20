@@ -1,10 +1,15 @@
 flowchart TD
     %% User Input
-    A[User Query<br/>What is machine learning?] --> B[Authentication Check<br/>JWT Validation]
+    A[User Query<br/>What is machine learning?] --> SessionCheck{Session Continuity<br/>Check?}
+    SessionCheck -->|New Session| B[Authentication Check<br/>JWT Validation]
+    SessionCheck -->|Continue Session| SessionModal[Session Continuity Modal<br/>Previous Context Preview]
+    SessionModal --> B
     
     %% Security Layer
-    B --> C[Security Guardrails<br/>Content Filtering]
-    C --> D[Rate Limiting Check<br/>10 requests/60 seconds]
+    B --> C[Multi-Layer Security<br/>Offline + Online Safety]
+    C --> QuizBlock{Quiz Answer<br/>Pattern?}
+    QuizBlock -->|A,B,C,D| QuizError[Quiz Protection Block<br/>Use dedicated quiz feature!]
+    QuizBlock -->|Educational| D[Rate Limiting Check<br/>10 requests/60 seconds]
     
     %% RAG Pipeline Start
     D --> E[Intent Classification<br/>GPT-4o-mini Analysis]
@@ -13,13 +18,12 @@ flowchart TD
     E --> F{Intent Type?}
     F -->|explain/define| G[Definition Pipeline]
     F -->|compare/analyze| H[Comparison Pipeline]
-    F -->|quiz/test| I[Quiz Pipeline]
+    F -->|quiz request| QuizGuidance[Quiz Guidance Response<br/>Use dedicated quiz endpoints!]
     F -->|general| J[General Learning Pipeline]
     
     %% Multi-Source Retrieval
-    G --> K[Multi-Source Retrieval]
+    G --> K[Multi-Source Retrieval<br/>+ Conversation Context]
     H --> K
-    I --> K
     J --> K
     
     %% Retrieval Sources
@@ -42,10 +46,10 @@ flowchart TD
     S --> T[Include Citations &<br/>Next Steps]
     
     %% Agentic Enhancement
-    T --> U[Agentic Analysis<br/>Background Processing]
+    T --> U[Enhanced Agentic Analysis<br/>Robust JSON Processing]
     U --> V[Learning Path<br/>Recommendations]
-    U --> W[Comprehension<br/>Signals]
-    U --> X[Progress<br/>Tracking]
+    U --> W[Comprehension Insights<br/>Improved Parsing]
+    U --> X[Progress Tracking<br/>+ Session Storage]
     
     %% Final Response
     V --> Y[Enhanced Response<br/>with Personalization]
@@ -56,9 +60,10 @@ flowchart TD
     %% Output
     Y --> Z[JSON Response<br/>answer, citations, next_concepts]
     
-    %% Error Handling
+    %% Error Handling & New Responses
     C -->|Blocked Content| AA[Safety Response<br/>Let's focus on learning!]
     D -->|Rate Limited| BB[Gentle Limit Message<br/>Take a break!]
+    QuizGuidance --> CC[User-Friendly Quiz Guide<br/>Interactive learning options available!]
     
     %% Styling
     classDef input fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
@@ -68,11 +73,15 @@ flowchart TD
     classDef enhancement fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     classDef output fill:#e0f2f1,stroke:#00695c,stroke-width:2px
     classDef error fill:#fce4ec,stroke:#ad1457,stroke-width:2px
+    classDef session fill:#fff8e1,stroke:#ff8f00,stroke-width:2px
+    classDef protection fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px
     
-    class A,B input
+    class A input
+    class B,SessionCheck,SessionModal session
     class C,D security
-    class E,F,G,H,I,J,P,Q,R,S,T processing
+    class E,F,G,H,J,P,Q,R,S,T processing
     class K,L,M,N,O retrieval
     class U,V,W,X enhancement
     class Y,Z output
-    class AA,BB error
+    class AA,BB,CC,QuizError error
+    class QuizBlock,QuizGuidance protection

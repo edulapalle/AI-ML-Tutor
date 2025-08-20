@@ -2013,19 +2013,18 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
         print(f"   🎯 Detected quiz request - providing guidance about quiz endpoints")
         answer = f"""I'd love to help you with a quiz! 🎯
 
-However, for the best quiz experience, I recommend using our dedicated quiz feature instead of the main chat. 
+I notice you're asking for a quiz, but our quiz feature is currently being set up. In the meantime, I can help you learn through:
 
-**Here's how to access quizzes:**
-1. Use the quiz endpoints directly (if you're a developer)
-2. Or ask your developer to integrate the quiz functionality
+**Interactive Learning Options:**
+- 🤔 **Ask me questions** about any ML/AI topic
+- 💭 **Test your understanding** by explaining concepts back to me  
+- 🔄 **Practice with scenarios** like "What would happen if..."
+- 📚 **Deep dive discussions** on topics you're curious about
 
-**Available Quiz Features:**
-- 📝 Multiple choice questions
-- 📊 Scoring and feedback  
-- 📈 Progress tracking
-- 🎯 Topic-specific quizzes
+**Popular topics to explore:**
+{', '.join(next_concepts[:3])}
 
-For now, I can help you learn about {', '.join(next_concepts[:3])} through explanations and discussions. What would you like to explore?"""
+What sounds interesting to you? I can explain any concept, give examples, or help you think through ML problems! 🚀"""
     else:
         answer = generate_answer(prompt)
     

@@ -11,11 +11,12 @@ graph TD
     B --> B3[Recommends next<br/>optimal topics]
     B --> B4[Adapts difficulty<br/>autonomously]
     
-    %% Comprehension Monitor Details
+    %% Enhanced Comprehension Monitor Details
     C --> C1[Tracks understanding<br/>signals from chat]
     C --> C2[Detects confusion/<br/>mastery patterns]
     C --> C3[Adjusts difficulty<br/>autonomously]
     C --> C4[Monitors learning<br/>velocity]
+    C --> C5[Robust JSON Parsing<br/>Handles wrapped responses]
     
     %% Goal Achievement Assistant Details
     D --> D1[Tracks goal progress]
@@ -61,7 +62,7 @@ graph TD
     
     class A orchestrator
     class B,C,D,E agents
-    class B1,B2,B3,B4,C1,C2,C3,C4,D1,D2,D3,D4,E1,E2,E3,E4 features
+    class B1,B2,B3,B4,C1,C2,C3,C4,C5,D1,D2,D3,D4,E1,E2,E3,E4 features
     class F,G,H,I data
     class J coordination
     class K,K1,K2,K3,K4 output

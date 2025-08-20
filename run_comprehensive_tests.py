@@ -61,6 +61,11 @@ class ComprehensiveTestRunner:
                 "name": "RAG Backend",
                 "script": "test_rag_backend.py",
                 "description": "Core RAG functionality and performance"
+            },
+            "session_quiz_fixes": {
+                "name": "Session & Quiz Fixes",
+                "script": "test_session_and_quiz_fixes.py",
+                "description": "Session continuity, quiz blocking, agentic JSON parsing fixes"
             }
         }
         
@@ -236,7 +241,7 @@ def main():
     
     parser.add_argument(
         "--suite", 
-        choices=["auth", "rag", "agentic", "features", "security", "integration", "data_quality", "rag_backend"],
+        choices=["auth", "rag", "agentic", "features", "security", "integration", "data_quality", "rag_backend", "session_quiz_fixes"],
         help="Run specific test suite only"
     )
     
