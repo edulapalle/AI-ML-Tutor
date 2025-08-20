@@ -35,7 +35,7 @@ from openai import OpenAI
 from agentic_learning_system import AgenticLearningSystem
 from email_service import get_email_service
 
-# Import abuse protection system
+# Import both protection systems for hybrid safety approach
 from protection_middleware import validate_chat_message
 
 
@@ -1651,29 +1651,72 @@ async def chat(request: ChatRequest, fastapi_request: Request, current_user: Use
     print(f"   Study Level: {current_user.study_level}")
     print(f"   Timestamp: {datetime.now().isoformat()}")
     
-    # 🛡️ ABUSE PROTECTION: Comprehensive validation before processing
-    print(f"   🛡️ Running abuse protection checks...")
-    protection_result = await validate_chat_message(fastapi_request, request.message, current_user.id)
+    # 🛡️ MULTI-LAYER CHILD SAFETY PROTECTION
+    print(f"   🛡️ Running comprehensive child safety checks...")
     
-    if not protection_result["is_valid"]:
-        error_message = protection_result["error_message"]
-        status_code = protection_result["status_code"]
+    # Layer 1: Offline Safety Check (always works, no API dependencies)
+    from offline_safety import check_child_safety
+    offline_safety_result = check_child_safety(request.message)
+    
+    if not offline_safety_result['is_safe']:
+        safety_reason = offline_safety_result['reason']
+        print(f"   ❌ OFFLINE SAFETY: Blocked - {safety_reason}")
         
-        print(f"   ❌ Request blocked: {protection_result['error_type']}")
-        
-        # Return appropriate error based on protection result
-        if status_code == 429:
-            raise HTTPException(
-                status_code=429, 
-                detail=error_message,
-                headers={"Retry-After": str(int(protection_result.get("retry_after", 60)))}
-            )
-        elif status_code == 403:
-            raise HTTPException(status_code=403, detail=error_message)
+        # Provide child-friendly error message
+        if offline_safety_result['category'] == 'inappropriate':
+            error_msg = "I'm designed to help children learn about AI and machine learning in a safe way. Please ask me about ML concepts, algorithms, or data science!"
+        elif offline_safety_result['category'] == 'injection':
+            error_msg = "I'm here to help you learn about AI and machine learning. Please ask me educational questions!"
+        elif offline_safety_result['category'] == 'mild_profanity':
+            error_msg = "Let's keep our conversation positive and educational! Please ask me about machine learning concepts."
         else:
-            raise HTTPException(status_code=400, detail=error_message)
+            error_msg = "Please ask me about AI, machine learning, or data science topics!"
+        
+        raise HTTPException(status_code=400, detail=error_msg)
     
-    print(f"   ✅ ABUSE PROTECTION: Query allowed - {protection_result.get('validation_method', 'N/A')} validation (latency: {int((time.time() - t0) * 1000)}ms)")
+    print(f"   ✅ OFFLINE SAFETY: Passed ({offline_safety_result['safety_score']:.1f} safety score)")
+    
+    # Layer 2: Original Protection System (with greeting override)
+    try:
+        protection_result = await validate_chat_message(fastapi_request, request.message, current_user.id)
+        
+        # Special handling: Allow greetings through even if old system blocks them
+        from run_gaurdrails import is_greeting
+        if not protection_result["is_valid"] and protection_result.get('error_type') == 'non_ml_topic':
+            if is_greeting(request.message.strip()):
+                print(f"   ✅ GREETING OVERRIDE: Allowing '{request.message}' despite non-ML classification")
+                # Continue to new guardrails for greeting handling
+            else:
+                error_message = protection_result["error_message"] 
+                print(f"   ❌ Request blocked by protection system: {protection_result['error_type']}")
+                raise HTTPException(status_code=400, detail=error_message)
+        elif not protection_result["is_valid"]:
+            # Block all other safety violations (inappropriate, harmful, etc.)
+            error_message = protection_result["error_message"]
+            status_code = protection_result["status_code"]
+            
+            print(f"   ❌ Request blocked by protection system: {protection_result['error_type']}")
+            
+            if status_code == 429:
+                raise HTTPException(
+                    status_code=429, 
+                    detail=error_message,
+                    headers={"Retry-After": str(int(protection_result.get("retry_after", 60)))}
+                )
+            elif status_code == 403:
+                raise HTTPException(status_code=403, detail=error_message)
+            else:
+                raise HTTPException(status_code=400, detail=error_message)
+        
+        print(f"   ✅ PROTECTION SYSTEM: Passed")
+        
+    except Exception as e:
+        # If the old protection system fails (API issues), rely on offline safety
+        print(f"   ⚠️ Protection system unavailable: {e}")
+        print(f"   ✅ Relying on offline safety layer (already passed)")
+    
+    print(f"   ✅ MULTI-LAYER SAFETY: All checks passed, proceeding to educational guardrails")
+
     
     # 1) Get conversation context for guardrails and follow-up capabilities  
     conversation_context = []

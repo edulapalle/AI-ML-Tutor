@@ -311,8 +311,12 @@ async def run_guardrails(
     """
     t0 = time.time()
     
+    print(f"   🔍 GUARDRAILS DEBUG: Original text: '{text}'")
+    
     # 1. Input hygiene
     q = sanitize(text)
+    print(f"   🔍 GUARDRAILS DEBUG: Sanitized text: '{q}'")
+    
     if not q:
         return guardrail_result(False, "Empty prompt.")
     
@@ -321,6 +325,7 @@ async def run_guardrails(
     
     # 2. Handle greetings politely
     if is_greeting(q):
+        print(f"   ✅ GREETING DETECTED: '{q}' recognized as greeting")
         latency_ms = int((time.time() - t0) * 1000)
         return {
             "allowed": True, 

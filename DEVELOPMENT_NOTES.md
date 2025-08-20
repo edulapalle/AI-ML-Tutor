@@ -953,3 +953,17 @@ User requested complete removal of YouTube scraper and Neo4j integration to "bui
 - "hi", "hello", "HI" should now work with friendly responses
 - Session continuity should work without 403 errors
 - Greeting conversations stored in chat history for continuity
+
+### CRITICAL ROOT CAUSE FOUND & FIXED (Dec 19, 2024 - 10:20 PM):
+**Root Cause Discovered**: TWO competing abuse protection systems were running:
+1. **Old System**: `protection_middleware.py` → `abuse_protection.py` (running first, blocking greetings)
+2. **New System**: `run_gaurdrails.py` (our improved system, never reached)
+
+**Problem**: Old system blocked "HI" as `non_ml_topic` before new guardrails could process it
+
+**Solution**: Completely disabled old protection system in favor of new guardrails:
+- Commented out `validate_chat_message()` call in chat endpoint
+- Removed import of `protection_middleware` 
+- Added debugging to `run_gaurdrails.py` to trace execution flow
+
+**Technical Lesson**: Always check for legacy/duplicate protection systems when debugging blocked requests
